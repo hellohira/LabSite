@@ -79,6 +79,10 @@
     min-height: 560px;
     overflow: hidden;
     isolation: isolate;
+    cursor: grab;
+    /* vertical page scroll still belongs to the page, so drag-to-pan is
+       wired to mouse and pen only — see the pointerdown handler */
+    touch-action: pan-y;
     /* committed single-theme block: the blue world from the design rough */
     background:
       linear-gradient(
@@ -156,6 +160,8 @@
     pointer-events: none;
   }
 
+  .hero.is-dragging { cursor: grabbing; }
+
   .card {
     position: absolute;
     left: 50%;
@@ -176,9 +182,10 @@
     background: #fff;
     overflow: hidden;
     position: relative;
-    /* the rough has flat white cards — a shadow only appears as a card
-       lifts toward the cursor */
-    box-shadow: none;
+    /* barely-there resting shadow. Blank white cards that overlap would
+       otherwise fuse into one white mass — real photos make this
+       unnecessary, so drop it once the images are in. */
+    box-shadow: 0 6px 24px rgba(2, 20, 92, 0.10);
     will-change: filter, opacity, box-shadow;
   }
 
@@ -531,8 +538,16 @@ card.style.transform =
       factor, so a pull of 40px reads as 40px on screen whether the card is near or far.
     </p>
 
+    <p>
+      Hold the mouse down and the whole plane comes with you. The drag sets a target the render loop
+      eases toward, so it tracks your hand at <span class="m">0.38</span> while held and coasts on released
+      velocity afterwards, decaying <span class="m">10%</span> a frame until it settles. The cursor attraction
+      stands down for the duration — both forces answer to the same pointer, and running them together just
+      makes the cards fight the drag. Touch is left alone so the page still scrolls on a phone.
+    </p>
+
     <p class="foot">
-      One <span class="m">requestAnimationFrame</span> loop, twelve nodes, no libraries. Blur is quantised to
+      One <span class="m">requestAnimationFrame</span> loop, nineteen nodes, no libraries. Blur is quantised to
       whole pixels on an inner element so the transformed node stays a clean 3D participant, and
       reduced-motion visitors get the same composition held still.
     </p>
@@ -543,7 +558,7 @@ card.style.transform =
 (function () {
   // bump this when the file changes — the console tells you at a glance
   // whether the copy you're looking at is the current one
-  console.log('%cLAB hero', 'font-weight:bold', 'build 2 — 7 cards, centred headline, subheading');
+  console.log('%cLAB hero', 'font-weight:bold', 'build 3 — 19 cards, drag to pan');
 
   var stage = document.getElementById('stage');
   var field = document.getElementById('field');
@@ -569,13 +584,32 @@ card.style.transform =
      rows freely — nothing is hardcoded to seven.
      ============================================================ */
   var CARDS = [
-    { src: '', n: '', g: '', x: -833, y: -315, w: 385, h: 250, d: 0.75, r: 0, hue: 268 },
-    { src: '', n: '', g: '', x: -362, y: -239, w: 247, h: 247, d: 0.55, r: 0, hue: 192 },
-    { src: '', n: '', g: '', x:  303, y: -314, w: 430, h: 298, d: 0.95, r: 0, hue: 210 },
-    { src: '', n: '', g: '', x:  871, y: -182, w: 330, h: 250, d: 1.15, r: 0, hue: 322 },
-    { src: '', n: '', g: '', x: -531, y:  176, w: 372, h: 302, d: 1.25, r: 0, hue: 286 },
-    { src: '', n: '', g: '', x:   28, y:  385, w: 360, h: 250, d: 1.00, r: 0, hue: 158 },
-    { src: '', n: '', g: '', x:  586, y:  135, w: 357, h: 245, d: 0.85, r: 0, hue: 232 }
+    // upper band
+    { src: '', n: '', g: '', x: -742, y: -318, w: 300, h: 385, d: 1.15, r: 0, hue: 268 },
+    { src: '', n: '', g: '', x: -470, y: -352, w: 340, h: 250, d: 0.70, r: 0, hue: 205 },
+    { src: '', n: '', g: '', x: -186, y: -395, w: 262, h: 300, d: 1.05, r: 0, hue: 176 },
+    { src: '', n: '', g: '', x:  132, y: -408, w: 300, h: 238, d: 0.60, r: 0, hue: 318 },
+    { src: '', n: '', g: '', x:  432, y: -338, w: 280, h: 350, d: 1.20, r: 0, hue: 146 },
+    { src: '', n: '', g: '', x:  728, y: -296, w: 330, h: 262, d: 0.80, r: 0, hue: 232 },
+
+    // flanks, bleeding off both edges
+    { src: '', n: '', g: '', x:-1010, y:  -70, w: 270, h: 320, d: 0.95, r: 0, hue: 292 },
+    { src: '', n: '', g: '', x: -880, y:   52, w: 322, h: 250, d: 0.55, r: 0, hue: 190 },
+    { src: '', n: '', g: '', x: -566, y:  104, w: 288, h: 330, d: 1.28, r: 0, hue: 250 },
+    { src: '', n: '', g: '', x:  622, y:   66, w: 300, h: 322, d: 1.25, r: 0, hue: 340 },
+    { src: '', n: '', g: '', x:  898, y:  122, w: 312, h: 242, d: 0.65, r: 0, hue: 214 },
+    { src: '', n: '', g: '', x: 1012, y:  -60, w: 264, h: 296, d: 1.10, r: 0, hue: 162 },
+
+    // lower band
+    { src: '', n: '', g: '', x: -706, y:  398, w: 300, h: 252, d: 0.90, r: 0, hue: 200 },
+    { src: '', n: '', g: '', x: -336, y:  428, w: 272, h: 300, d: 1.30, r: 0, hue: 304 },
+    { src: '', n: '', g: '', x:   22, y:  440, w: 342, h: 250, d: 1.00, r: 0, hue: 258 },
+    { src: '', n: '', g: '', x:  362, y:  424, w: 290, h: 282, d: 1.18, r: 0, hue: 184 },
+    { src: '', n: '', g: '', x:  704, y:  404, w: 310, h: 250, d: 0.75, r: 0, hue: 330 },
+
+    // tucked in close beside the headline — low depth keeps them behind it
+    { src: '', n: '', g: '', x: -430, y:  -68, w: 282, h: 242, d: 0.38, r: 0, hue: 222 },
+    { src: '', n: '', g: '', x:  452, y:  -84, w: 262, h: 252, d: 0.42, r: 0, hue: 154 }
   ];
 
   var DATA = CARDS;
@@ -665,6 +699,12 @@ card.style.transform =
   var cx = 0, cy = 0, tcx = 0, tcy = 0;    // damped cursor, in stage pixels
   var present = 0, tPresent = 0;           // 0 when the pointer is away
   var rot = 0, spin = 0;
+
+  // drag-to-pan: the whole plane slides under the cursor, then coasts
+  var panX = 0, panY = 0, panTX = 0, panTY = 0;
+  var dragging = false, dragOX = 0, dragOY = 0;
+  var velX = 0, velY = 0, lastDX = 0, lastDY = 0;
+  var dragRot = 0;                         // horizontal drag spins the ring
   var W = 0, H = 0, originX = 0, originY = 0;
 
   function layout() {
@@ -688,6 +728,7 @@ card.style.transform =
       c.face.style.borderRadius = Math.max(11, 26 * scale) + 'px';
     });
     if (!tPresent) { tcx = originX; tcy = originY; cx = tcx; cy = tcy; }
+    clampPan();
   }
 
   addEventListener('resize', layout);
@@ -709,6 +750,56 @@ card.style.transform =
 
   addEventListener('pointerleave', function () { tPresent = 0; });
   addEventListener('blur', function () { tPresent = 0; });
+
+  // ---- drag to pan the plane ----
+  var hero = document.querySelector('.hero');
+  var maxPan = 0;
+
+  function clampPan() {
+    maxPan = Math.min(W, H) * 0.42;
+    panTX = Math.max(-maxPan, Math.min(maxPan, panTX));
+    panTY = Math.max(-maxPan, Math.min(maxPan, panTY));
+  }
+
+  hero.addEventListener('pointerdown', function (e) {
+    // leave touch to scroll the page, and never hijack a click on the chrome
+    if (e.pointerType === 'touch') return;
+    if (e.target.closest('.nav, .panel')) return;
+
+    dragging = true;
+    hero.classList.add('is-dragging');
+    hero.setPointerCapture(e.pointerId);
+    dragOX = e.clientX - panTX;
+    dragOY = e.clientY - panTY;
+    lastDX = e.clientX;
+    lastDY = e.clientY;
+    velX = velY = 0;
+    e.preventDefault();
+  });
+
+  hero.addEventListener('pointermove', function (e) {
+    if (!dragging) return;
+    panTX = e.clientX - dragOX;
+    panTY = e.clientY - dragOY;
+    clampPan();
+    // running average keeps the throw velocity from spiking on one stray frame
+    velX = velX * 0.6 + (e.clientX - lastDX) * 0.4;
+    velY = velY * 0.6 + (e.clientY - lastDY) * 0.4;
+    lastDX = e.clientX;
+    lastDY = e.clientY;
+  });
+
+  function endDrag(e) {
+    if (!dragging) return;
+    dragging = false;
+    hero.classList.remove('is-dragging');
+    if (e && e.pointerId != null && hero.hasPointerCapture(e.pointerId)) {
+      hero.releasePointerCapture(e.pointerId);
+    }
+  }
+
+  hero.addEventListener('pointerup', endDrag);
+  hero.addEventListener('pointercancel', endDrag);
 
   function quant(v, step) { return Math.round(v / step) * step; }
 
@@ -733,9 +824,12 @@ card.style.transform =
         c = cards[i];
         var d = c.data.d;
 
-        // resting position for this frame (base layout + global parallax drift)
-        var px = c.data.x * scale - x * rangeX * d;
-        var py = c.data.y * ySpread - y * rangeY * d;
+        // resting position for this frame: base layout + parallax drift +
+        // the dragged pan. Pan is mostly uniform — the plane moves as one —
+        // with just enough depth weighting to keep it dimensional.
+        var panW = 0.7 + 0.3 * d;
+        var px = c.data.x * scale - x * rangeX * d + panX * panW;
+        var py = c.data.y * ySpread - y * rangeY * d + panY * panW;
         var pz = (d - 0.85) * 150 * scale;
 
         // cursor attraction, measured from the resting position
@@ -775,8 +869,9 @@ card.style.transform =
         var wx = Math.sin(th) * R;
         var wz = depth * R;
         var proj = PERSP / (PERSP - wz);
+        var yBase = c.yOff * scale + panY;   // horizontal drag spins the ring
         var sx = originX + wx * proj;
-        var sy = originY + c.yOff * scale * proj;
+        var sy = originY + yBase * proj;
 
         var ddx = cx - sx;
         var ddy = cy - sy;
@@ -792,7 +887,7 @@ card.style.transform =
           ' translateZ(' + R.toFixed(1) + 'px)' +
           ' rotateY(' + (-th).toFixed(4) + 'rad)' +          // full billboard: card stays flat
           ' translate3d(' + pullX.toFixed(2) + 'px,' +
-          (c.yOff * scale + pullY).toFixed(2) + 'px,' +
+          (yBase + pullY).toFixed(2) + 'px,' +
           lift.toFixed(2) + 'px)';
 
         var bl = quant((1 - t) * 5, 1);
@@ -818,9 +913,9 @@ card.style.transform =
     if (s === c.lastShadow) return;
     c.lastShadow = s;
     c.face.style.boxShadow = s === 0
-      ? 'none'
-      : '0 ' + (22 * s).toFixed(0) + 'px ' + (56 * s).toFixed(0) +
-        'px rgba(2, 20, 92, ' + (0.26 * s).toFixed(2) + ')';
+      ? '0 6px 24px rgba(2, 20, 92, 0.10)'
+      : '0 ' + (6 + 26 * s).toFixed(0) + 'px ' + (24 + 44 * s).toFixed(0) +
+        'px rgba(2, 20, 92, ' + (0.1 + 0.18 * s).toFixed(2) + ')';
   }
 
   function frame() {
@@ -831,11 +926,29 @@ card.style.transform =
     var ce = Math.min(1, ease * 2.6);
     cx += (tcx - cx) * ce;
     cy += (tcy - cy) * ce;
-    present += (tPresent - present) * 0.08;
+    // the attraction stands down while you're dragging, or the two forces
+    // fight each other under the same cursor
+    present += ((dragging ? 0 : tPresent) - present) * 0.12;
+
+    if (!dragging) {
+      // coast after release, then settle
+      if (Math.abs(velX) > 0.05 || Math.abs(velY) > 0.05) {
+        panTX += velX;
+        panTY += velY;
+        velX *= 0.90;
+        velY *= 0.90;
+        clampPan();
+      }
+    }
+    // dragging tracks the hand almost 1:1; released, it eases
+    var pe = dragging ? 0.38 : Math.min(1, ease * 2.2);
+    panX += (panTX - panX) * pe;
+    panY += (panTY - panY) * pe;
 
     if (mode === 'cylinder') {
       spin += 0.0013;
-      var target = spin + x * 1.15;
+      dragRot = panX / Math.max(240, W * 0.45);
+      var target = spin + x * 1.15 + dragRot * 1.6;
       rot += (target - rot) * Math.min(1, ease * 1.6);
     }
 
