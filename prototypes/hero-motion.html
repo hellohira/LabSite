@@ -273,9 +273,8 @@
     color: #000;
     text-wrap: balance;
   }
-  /* Sits below the headline on its own, not inside it. The headline turns
-     far too hard for reading copy to ride along — it ends up edge-on. This
-     takes a fraction of the same turn so it still belongs to the space. */
+  /* Sits below the headline on its own rather than nested inside it, so its
+     position doesn't depend on the headline's own box. */
   .sub {
     position: absolute;
     left: 50%;
@@ -591,9 +590,10 @@ card.style.transform =
     </p>
 
     <p>
-      The headline turns with the globe rather than floating flat on top of it, so the type takes real
-      perspective — it is the one thing on screen that tells you the space is genuinely dimensional and not a
-      clever flat trick.
+      The headline stays square to the screen and never turns. It sits at
+      <span class="m">z&nbsp;=&nbsp;0</span> inside the same 3D space, so tiles still sort in front of and behind it
+      by real geometry — but the type itself holds still while the field moves around it, which is what keeps it
+      readable at this size.
     </p>
 
     <p>
@@ -617,7 +617,7 @@ card.style.transform =
 (function () {
   // bump this when the file changes — the console tells you at a glance
   // whether the copy you're looking at is the current one
-  console.log('%cLAB hero', 'font-weight:bold', 'build 9 — stronger globe curvature');
+  console.log('%cLAB hero', 'font-weight:bold', 'build 10 — flat headline');
 
   var stage = document.getElementById('stage');
   var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -883,15 +883,11 @@ card.style.transform =
   hero.addEventListener('pointerup', endDrag);
   hero.addEventListener('pointercancel', endDrag);
 
-  var copyEl = document.querySelector('.copy');
-  var subEl = document.querySelector('.sub');
 
   // how far apart the composition sits, over and above the Spread control
   var SPACING = 1.18;
 
   function quant(v, step) { return Math.round(v / step) * step; }
-
-  function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
 
   // fold a value back into one lattice period, centred on zero
   function wrapAngle(v, span) { return v - span * Math.round(v / span); }
@@ -906,7 +902,6 @@ card.style.transform =
 
   function render() {
     var i, c, f, pullX, pullY, lift;
-    var textRotY = 0, textRotX = 0;
     var reach = (300 + 620 * reachPct) * scale;
     var amp = strength * present;
 
@@ -928,8 +923,6 @@ card.style.transform =
       // whole plane back so that side clears the headline instead of
       // cropping it. Cards far out at the edges still come forward.
       var planeZ = -70 * scale;
-      textRotY = -ay * 2.0;
-      textRotX = ax * 2.0;
       var planeSpin = ' rotateY(' + ay.toFixed(4) + 'rad) rotateX(' + ax.toFixed(4) + 'rad)';
 
       for (i = 0; i < N; i++) {
@@ -1009,11 +1002,6 @@ card.style.transform =
       // which is what lets the lattice repeat forever
       var offU = -x * 250 - panX;
       var offV = y * 150 - panY;
-      // The headline turns with the globe, heavily over-driven so the type
-      // reads as a 3D object rather than a flat layer that happens to move.
-      // Clamped, or a long drag folds it edge-on and it disappears.
-      textRotY = clamp(-Math.atan(offU / persp) * 3.8, -0.55, 0.55);
-      textRotX = clamp(Math.atan(offV / persp) * 3.4, -0.42, 0.42);
 
       for (i = 0; i < N; i++) {
         c = cards[i];
@@ -1054,17 +1042,6 @@ card.style.transform =
       }
     }
 
-    // The headline rides the same space rather than floating flat on top of
-    // it — it turns with the globe, so the type takes real perspective.
-    copyEl.style.transform =
-      'translate(-50%, -50%)' +
-      ' rotateY(' + textRotY.toFixed(4) + 'rad)' +
-      ' rotateX(' + textRotX.toFixed(4) + 'rad)';
-
-    subEl.style.transform =
-      'translateX(-50%)' +
-      ' rotateY(' + (textRotY * 0.28).toFixed(4) + 'rad)' +
-      ' rotateX(' + (textRotX * 0.28).toFixed(4) + 'rad)';
 
   }
 
