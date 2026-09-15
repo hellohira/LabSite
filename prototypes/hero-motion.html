@@ -10,10 +10,6 @@
 
 <style>
   :root {
-    --blue-900: #0530e8;
-    --blue-700: #1573ff;
-    --blue-400: #4ec3ff;
-    --blue-100: #cdeeff;
     --ink:      #05070d;
     --paper:    #f7f8fb;
     --paper-2:  #ffffff;
@@ -133,10 +129,10 @@
     inset: 0;
     perspective: 1200px;
     perspective-origin: 50% 46%;
+    transform-style: preserve-3d;
     z-index: 1;
     pointer-events: none;
   }
-  .stage.is-cyl { transform-style: preserve-3d; }
 
   .card {
     position: absolute;
@@ -150,6 +146,7 @@
     transform-origin: 50% 50%;
   }
 
+  /* the face never rotates in X or Y — cards stay flat, facing the camera */
   .face {
     width: 100%;
     height: 100%;
@@ -158,7 +155,7 @@
     overflow: hidden;
     position: relative;
     box-shadow: 0 24px 60px rgba(2, 20, 92, 0.22);
-    will-change: filter, opacity;
+    will-change: filter, opacity, box-shadow;
   }
 
   /* art fill — stands in for the game thumbnails */
@@ -203,7 +200,6 @@
     margin-left: min(-550px, -46vw);
     transform: translateY(-50%);
     text-align: center;
-    z-index: 50;             /* between back and front cards in scatter mode */
     pointer-events: none;
   }
   .copy h1 {
@@ -216,19 +212,40 @@
     text-wrap: balance;
   }
 
+  /* ---------- CURSOR FIELD ---------- */
+
+  .field {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 260px;
+    height: 260px;
+    margin: -130px 0 0 -130px;
+    border-radius: 50%;
+    z-index: 300;
+    pointer-events: none;
+    opacity: 0;
+    background: radial-gradient(circle, rgba(255,255,255,0.9) 0 2.6%, rgba(255,255,255,0.13) 3.4% 38%, transparent 62%);
+    will-change: transform, opacity;
+  }
+
   /* ---------- CONTROL PANEL ---------- */
 
   .panel {
     position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
+    /* left:0/right:0 + auto margins — left:50% would cap the auto width at
+       half the container and wrap the row */
+    left: 0;
+    right: 0;
+    width: fit-content;
+    margin-inline: auto;
     bottom: calc(22px + env(safe-area-inset-bottom, 0px));
     z-index: 400;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     justify-content: center;
-    gap: 8px 18px;
+    gap: 8px 14px;
     max-width: calc(100vw - 32px);
     padding: 10px 14px;
     border-radius: 999px;
@@ -251,7 +268,7 @@
   }
   .seg button[aria-pressed="true"] { background: #05070d; color: #fff; }
 
-  .knob { display: flex; align-items: center; gap: 9px; }
+  .knob { display: flex; align-items: center; gap: 8px; }
   .knob label {
     font-family: var(--mono);
     font-size: 10.5px;
@@ -259,7 +276,7 @@
     text-transform: uppercase;
     color: #5a6376;
   }
-  .knob input[type="range"] { width: 92px; accent-color: #0540f2; }
+  .knob input[type="range"] { width: 68px; accent-color: #0540f2; }
 
   .check { display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 600; color: #05070d; }
   .check input { accent-color: #0540f2; width: 15px; height: 15px; }
@@ -292,6 +309,7 @@
   }
   .notes p { margin: 0; max-width: 62ch; line-height: 1.62; color: var(--muted); font-size: 15.5px; }
   .notes p strong { color: var(--ink); font-weight: 600; }
+  .m { font-family: var(--mono); font-size: 0.92em; }
 
   .steps { display: grid; gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: 14px; overflow: hidden; }
   .step { background: var(--paper-2); padding: 18px 20px; display: grid; gap: 6px; }
@@ -324,14 +342,10 @@
 
   .foot { font-size: 13.5px; color: var(--muted); border-top: 1px solid var(--rule); padding-top: 20px; }
 
-  @media (max-width: 720px) {
+  @media (max-width: 860px) {
     .nav-links { display: none; }
     .nav { justify-content: space-between; }
     .knob { display: none; }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .face, .card { transition: none !important; }
   }
 </style>
 
@@ -361,10 +375,22 @@
     </div>
   </div>
 
+  <div class="field" id="field" aria-hidden="true"></div>
+
   <div class="panel">
     <div class="seg" role="group" aria-label="Background motion mode">
       <button type="button" id="mScatter" aria-pressed="true">Scatter</button>
       <button type="button" id="mCyl" aria-pressed="false">Cylinder</button>
+    </div>
+
+    <div class="knob">
+      <label for="pull">Pull</label>
+      <input type="range" id="pull" min="0" max="100" value="58">
+    </div>
+
+    <div class="knob">
+      <label for="reach">Reach</label>
+      <input type="range" id="reach" min="20" max="100" value="55">
     </div>
 
     <div class="knob">
@@ -386,57 +412,58 @@
 
 <section class="notes" id="notes">
   <div class="notes-inner">
-    <p class="eyebrow">Hero background · two builds</p>
-    <h2>One loop, two position functions</h2>
+    <p class="eyebrow">Hero background · attraction build</p>
+    <h2>Flat cards, moved through real depth</h2>
     <p>
-      Both references run the same machine: a field of cards larger than the viewport, moved by a
-      <strong>damped</strong> pointer value, with each card assigned a <strong>depth</strong>.
-      What separates them is only where the cards are placed. Everything here is CSS 3D transforms
-      and one <span style="font-family:var(--mono);font-size:0.92em">requestAnimationFrame</span> loop — no WebGL, no libraries.
+      Every card stays <strong>face-on</strong> — no <span class="m">rotateX</span>, no
+      <span class="m">rotateY</span>, so nothing ever skews into a trapezoid. The only 3D is
+      <strong>where</strong> a card sits: each one carries a <span class="m">translateZ</span>, and the stage's
+      <span class="m">perspective</span> turns that depth into size and speed on its own.
+      Cards stay 2D objects; the space they move through is 3D.
     </p>
 
     <div class="steps">
       <div class="step">
-        <h3>Track</h3>
-        <p>Pointer position becomes an offset from centre, normalised to roughly −0.5 → 0.5 on each axis.</p>
+        <h3>Reach</h3>
+        <p>Each card measures its own distance to the cursor and gets an influence value that smoothly falls off to zero at the edge of the radius. Nothing outside the radius moves at all.</p>
       </div>
       <div class="step">
-        <h3>Damp</h3>
-        <p>Each frame eases toward that target instead of snapping to it. This is the whole reason the motion feels expensive — drag the Ease slider to 20 and it turns cheap immediately.</p>
+        <h3>Pull</h3>
+        <p>Inside that radius the card slides along the vector toward the cursor — move up, they rise toward you. It also gains <span class="m">translateZ</span>, so it lifts off the plane and grows as it comes forward.</p>
       </div>
       <div class="step">
-        <h3>Distribute</h3>
-        <p>Multiply the eased offset by each card's depth. Different speeds read as different distances, and the parallax does the rest.</p>
+        <h3>Settle</h3>
+        <p>Influence is computed from each card's resting position, never its pulled one. That keeps the force a pure function of where the cursor is, so cards can't chase themselves into a feedback wobble.</p>
       </div>
     </div>
 
-    <pre><span class="c">// scatter — depth scales a flat translation</span>
+    <pre><span class="c">// how close is the cursor, 1 at the centre → 0 at the edge of reach</span>
+<span class="k">const</span> dx = cursorX - restX, dy = cursorY - restY;
+<span class="k">let</span> f = Math.max(0, 1 - Math.hypot(dx, dy) / reach);
+f = f * f * (3 - 2 * f);                    <span class="c">// smoothstep, no hard rim</span>
+
+<span class="c">// slide toward the cursor and lift toward the camera</span>
+<span class="k">const</span> pullX = dx * f * 0.3 * strength;
+<span class="k">const</span> pullY = dy * f * 0.3 * strength;
+<span class="k">const</span> lift  = f * 110 * strength;
+
 card.style.transform =
-  <span class="s">`translate3d(${bx - x * 260 * d}px, ${by - y * 170 * d}px, 0)
-   rotate(${rot}deg) rotateY(${-x * 13 * d}deg) rotateX(${y * 9 * d}deg)`</span>;
-
-<span class="c">// cylinder — depth falls out of the geometry</span>
-<span class="k">const</span> theta = i / N * Math.PI * 2 + rotation;   <span class="c">// rotation follows the pointer</span>
-<span class="k">const</span> depth = Math.cos(theta);                   <span class="c">// +1 front, −1 back</span>
-
-card.style.transform =
-  <span class="s">`rotateX(${tilt}deg) rotateY(${theta}rad) translateZ(${R}px)
-   rotateY(${-theta * 0.82}rad) translateY(${yOff}px)`</span>;
-
-face.style.opacity = 0.22 + 0.78 * (depth + 1) / 2;
-face.style.filter  = <span class="s">`blur(${quantise((1 - (depth + 1) / 2) * 5)}px)`</span>;</pre>
+  <span class="s">`translate3d(${restX + pullX}px, ${restY + pullY}px, ${baseZ + lift}px)
+   rotate(${tiltInPlane}deg)`</span>;     <span class="c">// rotate() is 2D — the card stays flat</span></pre>
 
     <p>
-      The cylinder needs <span style="font-family:var(--mono);font-size:0.92em">transform-style: preserve-3d</span> on the stage,
-      which buys you something important for free: the headline sits inside that same 3D space at z&nbsp;=&nbsp;0, so the browser
-      sorts cards in front of and behind it by real geometry. No z-index bookkeeping. In scatter mode the stage is flat,
-      so front and back cards are split with z-index around the headline's layer instead.
+      The cylinder mode runs the identical force. Its cards are placed with
+      <span class="m">rotateY(θ) translateZ(R)</span> and then fully counter-rotated by
+      <span class="m">rotateY(−θ)</span>, which cancels the turn and leaves every card square to the camera
+      while still orbiting through depth. Because that counter-rotation lands the card back in camera-aligned
+      space, the same pull vector can simply be appended to the transform — divided by the card's perspective
+      factor, so a pull of 40px reads as 40px on screen whether the card is near or far.
     </p>
 
     <p class="foot">
-      Blur is quantised to whole pixels and lives on an inner element, never on the transformed card — animating a filter
-      per-frame on a 3D-positioned node is what turns a smooth hero into a slideshow. Reduced-motion visitors get the same
-      composition, held still.
+      One <span class="m">requestAnimationFrame</span> loop, twelve nodes, no libraries. Blur is quantised to
+      whole pixels on an inner element so the transformed node stays a clean 3D participant, and
+      reduced-motion visitors get the same composition held still.
     </p>
   </div>
 </section>
@@ -444,21 +471,23 @@ face.style.filter  = <span class="s">`blur(${quantise((1 - (depth + 1) / 2) * 5)
 <script>
 (function () {
   var stage = document.getElementById('stage');
+  var field = document.getElementById('field');
   var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var PERSP = 1200;
 
   var DATA = [
-    { n: 'Neon Drift',   g: 'Racer',       x: -720, y: -320, w: 360, h: 250, d: 0.55, r: -3.5, h_: 268 },
-    { n: 'Tower Pop',    g: 'Puzzle',      x: -350, y: -268, w: 244, h: 236, d: 0.95, r:  2.5, h_: 192 },
-    { n: 'Sky Harvest',  g: 'Sim',         x:  205, y: -318, w: 430, h: 296, d: 0.70, r: -1.5, h_: 210 },
-    { n: 'Blockbound',   g: 'Platformer',  x:  790, y: -186, w: 330, h: 240, d: 1.20, r:  4.0, h_: 322 },
-    { n: 'Ghost Mail',   g: 'Narrative',   x: -566, y:  212, w: 372, h: 300, d: 1.10, r: -2.0, h_: 286 },
-    { n: 'Pixel Reef',   g: 'Sandbox',     x:  -40, y:  412, w: 350, h: 250, d: 0.85, r:  1.5, h_: 158 },
-    { n: 'Loop Runner',  g: 'Endless',     x:  612, y:  196, w: 360, h: 244, d: 0.60, r: -4.0, h_: 232 },
-    { n: 'Cat Café',     g: 'Idle',        x: -888, y:  118, w: 262, h: 190, d: 1.30, r:  3.0, h_: 336 },
-    { n: 'Rift Tactics', g: 'Strategy',    x:  952, y:  330, w: 300, h: 210, d: 0.45, r: -2.5, h_: 246 },
-    { n: 'Bloom',        g: 'Puzzle',      x: -132, y: -486, w: 224, h: 162, d: 1.35, r:  5.0, h_: 300 },
-    { n: 'Static Field', g: 'Shooter',     x:  436, y:  474, w: 262, h: 182, d: 1.25, r: -5.5, h_: 204 },
-    { n: 'Paper Town',   g: 'Builder',     x: -824, y:  -58, w: 206, h: 152, d: 0.35, r:  2.0, h_: 176 }
+    { n: 'Neon Drift',   g: 'Racer',       x: -720, y: -320, w: 360, h: 250, d: 0.55, r: -3.5, hue: 268 },
+    { n: 'Tower Pop',    g: 'Puzzle',      x: -350, y: -268, w: 244, h: 236, d: 0.95, r:  2.5, hue: 192 },
+    { n: 'Sky Harvest',  g: 'Sim',         x:  205, y: -318, w: 430, h: 296, d: 0.70, r: -1.5, hue: 210 },
+    { n: 'Blockbound',   g: 'Platformer',  x:  790, y: -186, w: 330, h: 240, d: 1.20, r:  4.0, hue: 322 },
+    { n: 'Ghost Mail',   g: 'Narrative',   x: -566, y:  212, w: 372, h: 300, d: 1.10, r: -2.0, hue: 286 },
+    { n: 'Pixel Reef',   g: 'Sandbox',     x:  -40, y:  412, w: 350, h: 250, d: 0.85, r:  1.5, hue: 158 },
+    { n: 'Loop Runner',  g: 'Endless',     x:  612, y:  196, w: 360, h: 244, d: 0.60, r: -4.0, hue: 232 },
+    { n: 'Cat Café',     g: 'Idle',        x: -888, y:  118, w: 262, h: 190, d: 1.30, r:  3.0, hue: 336 },
+    { n: 'Rift Tactics', g: 'Strategy',    x:  952, y:  330, w: 300, h: 210, d: 0.45, r: -2.5, hue: 246 },
+    { n: 'Bloom',        g: 'Puzzle',      x: -132, y: -486, w: 224, h: 162, d: 1.35, r:  5.0, hue: 300 },
+    { n: 'Static Field', g: 'Shooter',     x:  436, y:  474, w: 262, h: 182, d: 1.25, r: -5.5, hue: 204 },
+    { n: 'Paper Town',   g: 'Builder',     x: -824, y:  -58, w: 206, h: 152, d: 0.35, r:  2.0, hue: 176 }
   ];
 
   var N = DATA.length;
@@ -468,7 +497,7 @@ face.style.filter  = <span class="s">`blur(${quantise((1 - (depth + 1) / 2) * 5)
     var el = document.createElement('article');
     el.className = 'card';
     el.setAttribute('aria-hidden', 'true');
-    el.style.setProperty('--h', d.h_);
+    el.style.setProperty('--h', d.hue);
 
     var face = document.createElement('div');
     face.className = 'face';
@@ -483,23 +512,29 @@ face.style.filter  = <span class="s">`blur(${quantise((1 - (depth + 1) / 2) * 5)
       theta0: (i / N) * Math.PI * 2,
       yOff: ((i % 4) - 1.5) * 118 + (i % 3) * 26,
       lastBlur: -1,
-      lastZ: -1
+      lastShadow: -1
     });
   });
 
   // ---- state ----
   var mode = 'scatter';
+  var strength = 0.58;     // pull
+  var reachPct = 0.55;     // influence radius
   var spread = 0.52;
   var ease = 0.06;
   var scale = 1;
 
-  var x = 0, y = 0, tx = 0, ty = 0;   // damped pointer + target
-  var rot = 0, spin = 0;              // cylinder rotation
-  var W = 0, H = 0;
+  var x = 0, y = 0, tx = 0, ty = 0;        // damped pointer, normalised -0.5..0.5
+  var cx = 0, cy = 0, tcx = 0, tcy = 0;    // damped cursor, in stage pixels
+  var present = 0, tPresent = 0;           // 0 when the pointer is away
+  var rot = 0, spin = 0;
+  var W = 0, H = 0, originX = 0, originY = 0;
 
   function layout() {
     W = stage.clientWidth;
     H = stage.clientHeight;
+    originX = W / 2;
+    originY = H * 0.46;
     scale = Math.max(0.38, Math.min(0.92, W / 1980));
     cards.forEach(function (c) {
       var w = c.data.w * scale, h = c.data.h * scale;
@@ -507,22 +542,45 @@ face.style.filter  = <span class="s">`blur(${quantise((1 - (depth + 1) / 2) * 5)
       c.el.style.height = h + 'px';
       c.el.style.marginLeft = (-w / 2) + 'px';
       c.el.style.marginTop = (-h / 2) + 'px';
-      c.el.querySelector('.face').style.borderRadius = Math.max(12, 22 * scale) + 'px';
+      c.face.style.borderRadius = Math.max(12, 22 * scale) + 'px';
     });
+    if (!tPresent) { tcx = originX; tcy = originY; cx = tcx; cy = tcy; }
   }
 
   addEventListener('resize', layout);
   layout();
 
+  var rect = { left: 0, top: 0 };
+  function syncRect() { rect = stage.getBoundingClientRect(); }
+  syncRect();
+  addEventListener('scroll', syncRect, { passive: true });
+  addEventListener('resize', syncRect);
+
   addEventListener('pointermove', function (e) {
     tx = e.clientX / innerWidth - 0.5;
     ty = e.clientY / innerHeight - 0.5;
+    tcx = e.clientX - rect.left;
+    tcy = e.clientY - rect.top;
+    tPresent = 1;
   }, { passive: true });
+
+  addEventListener('pointerleave', function () { tPresent = 0; });
+  addEventListener('blur', function () { tPresent = 0; });
 
   function quant(v, step) { return Math.round(v / step) * step; }
 
+  // smooth 1 → 0 falloff over the reach radius
+  function influence(dx, dy, reach) {
+    var dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist >= reach) return 0;
+    var f = 1 - dist / reach;
+    return f * f * (3 - 2 * f);
+  }
+
   function render() {
-    var i, c, t;
+    var i, c, f, pullX, pullY, lift;
+    var reach = (300 + 620 * reachPct) * scale;
+    var amp = strength * present;
 
     if (mode === 'scatter') {
       var rangeX = 300 * spread * 2 * scale;
@@ -531,18 +589,25 @@ face.style.filter  = <span class="s">`blur(${quantise((1 - (depth + 1) / 2) * 5)
       for (i = 0; i < N; i++) {
         c = cards[i];
         var d = c.data.d;
+
+        // resting position for this frame (base layout + global parallax drift)
         var px = c.data.x * scale - x * rangeX * d;
         var py = c.data.y * scale - y * rangeY * d;
+        var pz = (d - 0.85) * 150 * scale;
+
+        // cursor attraction, measured from the resting position
+        var dx = cx - (originX + px);
+        var dy = cy - (originY + py);
+        f = amp ? influence(dx, dy, reach) : 0;
+        pullX = dx * f * 0.3 * amp;
+        pullY = dy * f * 0.3 * amp;
+        lift = f * 110 * amp * scale;
 
         c.el.style.transform =
-          'translate3d(' + px.toFixed(2) + 'px,' + py.toFixed(2) + 'px,0)' +
-          ' rotate(' + c.data.r + 'deg)' +
-          ' rotateY(' + (-x * 14 * d).toFixed(2) + 'deg)' +
-          ' rotateX(' + (y * 10 * d).toFixed(2) + 'deg)';
-
-        // flat stage → split front/back around the headline (z-index 50)
-        var z = d > 0.9 ? 80 : 10;
-        if (z !== c.lastZ) { c.el.style.zIndex = z; c.lastZ = z; }
+          'translate3d(' + (px + pullX).toFixed(2) + 'px,' +
+          (py + pullY).toFixed(2) + 'px,' +
+          (pz + lift).toFixed(2) + 'px)' +
+          ' rotate(' + c.data.r + 'deg)';
 
         var b = quant((1 - Math.min(1, d / 1.35)) * 2, 1);
         if (b !== c.lastBlur) {
@@ -550,6 +615,7 @@ face.style.filter  = <span class="s">`blur(${quantise((1 - (depth + 1) / 2) * 5)
           c.face.style.opacity = (0.86 + 0.14 * Math.min(1, d / 1.35)).toFixed(2);
           c.lastBlur = b;
         }
+        shade(c, f);
       }
     } else {
       var R = (520 + 380 * spread) * scale;
@@ -558,15 +624,32 @@ face.style.filter  = <span class="s">`blur(${quantise((1 - (depth + 1) / 2) * 5)
       for (i = 0; i < N; i++) {
         c = cards[i];
         var th = c.theta0 + rot;
-        var depth = Math.cos(th);             // +1 nearest, -1 furthest
-        t = (depth + 1) / 2;
+        var depth = Math.cos(th);                 // +1 nearest, -1 furthest
+        var t = (depth + 1) / 2;
+
+        // where this card lands on screen, so the cursor can find it
+        var wx = Math.sin(th) * R;
+        var wz = depth * R;
+        var proj = PERSP / (PERSP - wz);
+        var sx = originX + wx * proj;
+        var sy = originY + c.yOff * scale * proj;
+
+        var ddx = cx - sx;
+        var ddy = cy - sy;
+        f = amp ? influence(ddx, ddy, reach) : 0;
+        // divide by proj so the pull reads the same on screen at any depth
+        pullX = ddx * f * 0.3 * amp / proj;
+        pullY = ddy * f * 0.3 * amp / proj;
+        lift = f * 120 * amp * scale;
 
         c.el.style.transform =
           'rotateX(' + tilt.toFixed(2) + 'deg)' +
           ' rotateY(' + th.toFixed(4) + 'rad)' +
           ' translateZ(' + R.toFixed(1) + 'px)' +
-          ' rotateY(' + (-th * 0.82).toFixed(4) + 'rad)' +
-          ' translateY(' + (c.yOff * scale).toFixed(1) + 'px)';
+          ' rotateY(' + (-th).toFixed(4) + 'rad)' +          // full billboard: card stays flat
+          ' translate3d(' + pullX.toFixed(2) + 'px,' +
+          (c.yOff * scale + pullY).toFixed(2) + 'px,' +
+          lift.toFixed(2) + 'px)';
 
         var bl = quant((1 - t) * 5, 1);
         if (bl !== c.lastBlur) {
@@ -574,16 +657,38 @@ face.style.filter  = <span class="s">`blur(${quantise((1 - (depth + 1) / 2) * 5)
           c.lastBlur = bl;
         }
         c.face.style.opacity = (0.22 + 0.78 * t).toFixed(2);
+        shade(c, f);
       }
     }
+
+    field.style.transform =
+      'translate3d(' + cx.toFixed(1) + 'px,' + cy.toFixed(1) + 'px,0) scale(' +
+      (0.6 + 0.4 * present).toFixed(3) + ')';
+    field.style.opacity = (present * 0.55).toFixed(3);
+  }
+
+  // a lifted card throws a longer shadow — quantised so it isn't restyled every frame
+  function shade(c, f) {
+    var s = quant(f, 0.25);
+    if (s === c.lastShadow) return;
+    c.lastShadow = s;
+    c.face.style.boxShadow =
+      '0 ' + (24 + 40 * s).toFixed(0) + 'px ' + (60 + 50 * s).toFixed(0) +
+      'px rgba(2, 20, 92, ' + (0.22 + 0.12 * s).toFixed(2) + ')';
   }
 
   function frame() {
     x += (tx - x) * ease;
     y += (ty - y) * ease;
 
+    // the cursor itself tracks faster than the drift, so the pull feels direct
+    var ce = Math.min(1, ease * 2.6);
+    cx += (tcx - cx) * ce;
+    cy += (tcy - cy) * ce;
+    present += (tPresent - present) * 0.08;
+
     if (mode === 'cylinder') {
-      spin += 0.0013;                       // slow ambient drift
+      spin += 0.0013;
       var target = spin + x * 1.15;
       rot += (target - rot) * Math.min(1, ease * 1.6);
     }
@@ -593,7 +698,7 @@ face.style.filter  = <span class="s">`blur(${quantise((1 - (depth + 1) / 2) * 5)
   }
 
   if (reduce) {
-    tx = ty = 0;
+    tPresent = 0;
     render();
   } else {
     frame();
@@ -609,23 +714,29 @@ face.style.filter  = <span class="s">`blur(${quantise((1 - (depth + 1) / 2) * 5)
     stage.classList.toggle('is-scatter', m === 'scatter');
     bScatter.setAttribute('aria-pressed', String(m === 'scatter'));
     bCyl.setAttribute('aria-pressed', String(m === 'cylinder'));
-    cards.forEach(function (c) { c.lastBlur = -1; c.lastZ = -1; });
-    if (m === 'scatter') {
-      cards.forEach(function (c) { c.face.style.opacity = ''; });
-    }
+    cards.forEach(function (c) {
+      c.lastBlur = -1;
+      c.lastShadow = -1;
+      if (m === 'scatter') c.face.style.opacity = '';
+    });
     if (reduce) render();
   }
 
   bScatter.addEventListener('click', function () { setMode('scatter'); });
   bCyl.addEventListener('click', function () { setMode('cylinder'); });
 
-  document.getElementById('spread').addEventListener('input', function (e) {
-    spread = e.target.value / 100;
-    if (reduce) render();
-  });
-  document.getElementById('ease').addEventListener('input', function (e) {
-    ease = e.target.value / 100;
-  });
+  function bind(id, fn) {
+    document.getElementById(id).addEventListener('input', function (e) {
+      fn(Number(e.target.value));
+      if (reduce) render();
+    });
+  }
+
+  bind('pull',   function (v) { strength = v / 100; });
+  bind('reach',  function (v) { reachPct = v / 100; });
+  bind('spread', function (v) { spread = v / 100; });
+  bind('ease',   function (v) { ease = v / 100; });
+
   document.getElementById('art').addEventListener('change', function (e) {
     stage.classList.toggle('show-art', e.target.checked);
   });
