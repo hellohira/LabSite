@@ -232,10 +232,12 @@
     transform: translate(-50%, -50%);
     text-align: center;
     pointer-events: none;
+    transform-style: preserve-3d;
   }
   .copy .cta { pointer-events: auto; }
   .copy h1 {
     margin: 0;
+    will-change: transform;
     font-family: var(--display);
     /* a narrow face needs more size and far less negative tracking than
        the wide grotesque this replaced */
@@ -540,10 +542,11 @@ card.style.transform =
     </p>
 
     <p>
-      The headline stays square to the screen and never turns. It sits at
-      <span class="m">z&nbsp;=&nbsp;0</span> inside the same 3D space, so tiles still sort in front of and behind it
-      by real geometry — but the type itself holds still while the field moves around it, which is what keeps it
-      readable at this size.
+      The headline turns with the globe, over-driven well past the globe's own rotation so the type reads as an
+      object in the space rather than a flat layer laid over it. Only the headline turns — the mark above it and
+      the button below stay square, which keeps the turn legible as a deliberate move rather than the whole page
+      sliding. It needs <span class="m">transform-style: preserve-3d</span> on its container, or the stage's
+      perspective never reaches it and the rotation flattens into a squash.
     </p>
 
     <p>
@@ -567,9 +570,10 @@ card.style.transform =
 (function () {
   // bump this when the file changes — the console tells you at a glance
   // whether the copy you're looking at is the current one
-  console.log('%cLAB hero', 'font-weight:bold', 'build 12 — tiles behind the type');
+  console.log('%cLAB hero', 'font-weight:bold', 'build 13 — headline tilt');
 
   var stage = document.getElementById('stage');
+  var headEl = document.querySelector('.copy h1');
   var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   var PLANE_PERSP = 1200;
 
@@ -837,6 +841,8 @@ card.style.transform =
 
   function quant(v, step) { return Math.round(v / step) * step; }
 
+  function clampTo(v, lim) { return v < -lim ? -lim : v > lim ? lim : v; }
+
   // fold a value back into one lattice period, centred on zero
   function wrapAngle(v, span) { return v - span * Math.round(v / span); }
 
@@ -850,6 +856,7 @@ card.style.transform =
 
   function render() {
     var i, c, f, pullX, pullY, lift;
+    var headY = 0, headX = 0;
     var reach = (300 + 620 * reachPct) * scale;
     var amp = strength * present;
 
@@ -865,6 +872,8 @@ card.style.transform =
       // stays square to the screen.
       var ax = (-6 + y * 7) * tiltAmt * RAD;
       var ay = (8 - x * 9) * tiltAmt * RAD;
+      headY = -ay * 2.4;
+      headX = ax * 2.4;
       var sinX = Math.sin(ax), cosX = Math.cos(ax);
       var sinY = Math.sin(ay), cosY = Math.cos(ay);
       // the tilt swings one side of the plane toward the camera; seat the
@@ -951,6 +960,11 @@ card.style.transform =
       var offU = -x * 250 - panX;
       var offV = y * 150 - panY;
 
+      // Over-driven well past the globe's own rotation so the type reads as
+      // an object in the space. Clamped, or a long drag turns it edge-on.
+      headY = clampTo(-Math.atan(offU / persp) * 3.4, 0.50);
+      headX = clampTo(Math.atan(offV / persp) * 3.0, 0.38);
+
 
       for (i = 0; i < N; i++) {
         c = cards[i];
@@ -990,6 +1004,9 @@ card.style.transform =
         shade(c, f);
       }
     }
+
+    headEl.style.transform =
+      'rotateY(' + headY.toFixed(4) + 'rad) rotateX(' + headX.toFixed(4) + 'rad)';
 
   }
 
