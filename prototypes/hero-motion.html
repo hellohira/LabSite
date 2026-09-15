@@ -109,8 +109,6 @@
     padding-top: calc(clamp(18px, 2.3vw, 46px) + env(safe-area-inset-top, 0px));
   }
 
-  .mark { flex: none; display: block; }
-  .mark circle { fill: #000; }
 
   .nav-links {
     display: flex;
@@ -273,17 +271,12 @@
     color: #000;
     text-wrap: balance;
   }
-  /* Sits below the headline on its own rather than nested inside it, so its
-     position doesn't depend on the headline's own box. */
+  /* In flow under the headline, so adding the logo above pushes everything
+     down together instead of the two colliding. */
   .sub {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    margin: clamp(74px, 8.6vw, 178px) 0 0;
-    transform: translateX(-50%);
+    margin: clamp(16px, 2.1vw, 42px) auto 0;
     width: min(23em, 78vw);
     text-align: center;
-    pointer-events: none;
     font-family: var(--ui);
     font-size: clamp(14px, 1.1vw, 22px);
     font-weight: 400;
@@ -310,6 +303,33 @@
       rgba(255,255,255,0.97) 88%,
       #ffffff 100%);
   }
+
+  /* ---------- LOGO ---------- */
+
+  /* Two nested elements on purpose: perspective and preserve-3d fight each
+     other on a single node. The outer one supplies the little camera, the
+     inner one turns inside it, and each petal holds its own depth — so the
+     mark is a real object in space rather than a flat picture being tilted. */
+  .mark3d {
+    width: clamp(78px, 7.4vw, 142px);
+    aspect-ratio: 353 / 299;
+    margin: 0 auto clamp(20px, 2.4vw, 46px);
+    perspective: 460px;
+  }
+  .mark-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transform-style: preserve-3d;
+    will-change: transform;
+  }
+  .petal {
+    position: absolute;
+    inset: 0;
+    transform: translateZ(calc(var(--z) * 1px));
+  }
+  .petal svg { display: block; width: 100%; height: 100%; }
+  .petal path { fill: #000; }
 
   /* ---------- CONTROL PANEL ---------- */
 
@@ -435,13 +455,6 @@
 <body>
 <section class="hero">
   <header class="nav">
-    <svg class="mark" width="46" height="34" viewBox="0 0 46 34" aria-label="Studio home">
-      <circle cx="23" cy="7" r="5"></circle>
-      <circle cx="10" cy="15" r="5"></circle>
-      <circle cx="36" cy="15" r="5"></circle>
-      <circle cx="16" cy="28" r="4"></circle>
-      <circle cx="31" cy="27" r="3.4"></circle>
-    </svg>
     <ul class="nav-links">
       <li><a href="#notes">How it works</a></li>
       <li><a href="#notes">Games</a></li>
@@ -453,10 +466,19 @@
 
   <div class="stage" id="stage">
     <div class="copy">
+      <div class="mark3d" role="img" aria-label="LAB">
+        <div class="mark-inner" id="markInner">
+        <span class="petal" style="--z: -22"><svg viewBox="0 0 353 299" aria-hidden="true"><path d="M175.403 0.594599C177.509 0.451517 180.322 0.647049 182.425 0.892643C212.213 4.37179 231.901 30.5451 234.018 59.4502C235.375 77.3814 229.64 95.1269 218.055 108.833C209.943 118.243 199.161 124.983 186.991 127.568C183.685 128.27 181.145 128.467 177.776 128.708C163.592 129.002 149.852 123.734 139.468 114.019C126.62 102.227 119.578 85.3898 118.788 68.042C117.252 34.2866 140.276 2.07176 175.403 0.594599Z"/></svg></span>
+        <span class="petal" style="--z: 21"><svg viewBox="0 0 353 299" aria-hidden="true"><path d="M289.729 96.2782C306.427 95.3028 322.482 99.5028 335.639 110.106C354.181 125.049 357.975 150.5 342.333 169.082C331.167 182.346 315.996 188.366 299.064 189.96C281.822 190.913 265.759 186.88 252.238 175.733C233.864 160.586 230.612 135.109 246.394 116.757C257.621 103.701 272.875 97.7133 289.729 96.2782Z"/></svg></span>
+        <span class="petal" style="--z: -40"><svg viewBox="0 0 353 299" aria-hidden="true"><path d="M57.5409 96.1142C74.1337 96.3744 88.962 101.066 101.326 112.424C119.028 128.633 120.415 154.705 103.46 172.077C91.2555 184.581 75.8559 189.696 58.7228 190.14C42.8791 190.312 26.1068 184.828 14.7579 173.915C-15.9684 144.368 7.05314 103.754 44.4297 97.404C49.2478 96.5855 52.6355 96.2401 57.5409 96.1142Z"/></svg></span>
+        <span class="petal" style="--z: 40"><svg viewBox="0 0 353 299" aria-hidden="true"><path d="M249.65 193.693C273.239 192.172 296.367 213.986 298.924 237.019C300.526 251.436 294.212 265.19 279.934 270.095C276.981 271.109 274.631 271.459 271.6 271.802C259.423 272.106 249.064 268.216 239.716 260.304C229.957 252.043 222.799 240.029 221.75 227.093C220.271 208.873 231.324 195.117 249.65 193.693Z"/></svg></span>
+        <span class="petal" style="--z: -19"><svg viewBox="0 0 353 299" aria-hidden="true"><path d="M97.5137 193.692C105.071 193.211 113.249 195.373 119.041 200.291C135.396 214.172 130.779 238.86 118.329 253.556C109.338 264.169 98.5776 270.459 84.8232 271.807C76.2991 272.027 69.1503 270.476 62.4066 264.768C56.4209 259.676 53.0261 251.874 52.5152 244.103C51.2317 224.578 64.5298 205.78 81.7955 197.751C86.9676 195.346 91.826 194.112 97.5137 193.692Z"/></svg></span>
+        <span class="petal" style="--z: 21"><svg viewBox="0 0 353 299" aria-hidden="true"><path d="M174.537 223.81C174.602 223.799 174.666 223.789 174.731 223.779C181.312 223.548 187.947 226.218 192.876 230.582C208.959 244.818 210.038 272.598 196.141 288.687C192.415 292.998 187.487 296.338 181.972 297.786C180.131 298.271 178.545 298.456 176.67 298.582L176.44 298.598C169.928 298.982 162.832 295.931 158.039 291.597C142.112 277.194 141.131 249.379 155.253 233.408C160.369 227.622 166.852 224.242 174.537 223.81Z"/></svg></span>
+        </div>
+      </div>
       <h1>Build games<br>with no code</h1>
+      <p class="sub">Describe a game. LAB writes the code, models the characters and builds the world.</p>
     </div>
-
-    <p class="sub">Describe a game. LAB writes the code, models the characters and builds the world.</p>
   </div>
 
   <div class="veil" aria-hidden="true"></div>
@@ -617,9 +639,10 @@ card.style.transform =
 (function () {
   // bump this when the file changes — the console tells you at a glance
   // whether the copy you're looking at is the current one
-  console.log('%cLAB hero', 'font-weight:bold', 'build 10 — flat headline');
+  console.log('%cLAB hero', 'font-weight:bold', 'build 11 — 3D logo, wider lattice');
 
   var stage = document.getElementById('stage');
+  var markInner = document.getElementById('markInner');
   var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   var PLANE_PERSP = 1200;
 
@@ -670,7 +693,7 @@ card.style.transform =
   // wraps round, in screen pixels from centre. It has to clear the edge by
   // at least half a tile so the wrap is never seen (0.5 + ~0.11), and every
   // extra bit above that thins the field out. These are near the floor.
-  var LATTICE_W = 0.63, LATTICE_H = 0.62;
+  var LATTICE_W = 0.76, LATTICE_H = 0.72;
 
   var SLOTS = [
     { img: 0, w: 430, h: 254, jx: -0.13, jy:  0.24 },
@@ -889,6 +912,8 @@ card.style.transform =
 
   function quant(v, step) { return Math.round(v / step) * step; }
 
+  function clampTo(v, lim) { return v < -lim ? -lim : v > lim ? lim : v; }
+
   // fold a value back into one lattice period, centred on zero
   function wrapAngle(v, span) { return v - span * Math.round(v / span); }
 
@@ -902,6 +927,7 @@ card.style.transform =
 
   function render() {
     var i, c, f, pullX, pullY, lift;
+    var markY = 0, markX = 0;
     var reach = (300 + 620 * reachPct) * scale;
     var amp = strength * present;
 
@@ -917,6 +943,8 @@ card.style.transform =
       // stays square to the screen.
       var ax = (-6 + y * 7) * tiltAmt * RAD;
       var ay = (8 - x * 9) * tiltAmt * RAD;
+      markY = -ay * 3.4;
+      markX = ax * 3.4;
       var sinX = Math.sin(ax), cosX = Math.cos(ax);
       var sinY = Math.sin(ay), cosY = Math.cos(ay);
       // the tilt swings one side of the plane toward the camera; seat the
@@ -1003,6 +1031,11 @@ card.style.transform =
       var offU = -x * 250 - panX;
       var offV = y * 150 - panY;
 
+      // The mark carries the 3D that the headline gave up — it's a compact
+      // shape, so it can turn hard without costing anything in legibility.
+      markY = clampTo(-Math.atan(offU / persp) * 5.2, 0.85);
+      markX = clampTo(Math.atan(offV / persp) * 4.6, 0.6);
+
       for (i = 0; i < N; i++) {
         c = cards[i];
 
@@ -1042,7 +1075,8 @@ card.style.transform =
       }
     }
 
-
+    markInner.style.transform =
+      'rotateY(' + markY.toFixed(4) + 'rad) rotateX(' + markX.toFixed(4) + 'rad)';
   }
 
   // cards sit flat by default; a shadow only grows as one lifts toward the
