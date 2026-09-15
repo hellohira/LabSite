@@ -75,19 +75,21 @@
 
   .hero {
     position: relative;
-    min-height: 82svh;
+    height: 100svh;
+    min-height: 560px;
     overflow: hidden;
     isolation: isolate;
     /* committed single-theme block: the blue world from the design rough */
     background:
       linear-gradient(
         180deg,
-        #0530e8   0%,
-        #0b4ff5  18%,
-        #1a8dff  42%,
-        #62cfff  66%,
-        #c8efff  84%,
-        #ffffff 100%
+        #0433ea   0%,
+        #0a57f4  16%,
+        #1592ff  38%,
+        #3fc0ff  56%,
+        #8adcff  72%,
+        #cbeeff  86%,
+        #ffffff  98%
       );
   }
 
@@ -99,8 +101,8 @@
     display: flex;
     align-items: center;
     gap: 24px;
-    padding: 22px clamp(16px, 3vw, 40px);
-    padding-top: calc(22px + env(safe-area-inset-top, 0px));
+    padding: clamp(18px, 2.3vw, 46px) clamp(16px, 3.2vw, 64px);
+    padding-top: calc(clamp(18px, 2.3vw, 46px) + env(safe-area-inset-top, 0px));
   }
 
   .mark { flex: none; display: block; }
@@ -117,7 +119,7 @@
   .nav-links a {
     color: #000;
     text-decoration: none;
-    font-size: 15px;
+    font-size: clamp(13px, 0.95vw, 19px);
     font-weight: 600;
     letter-spacing: -0.01em;
     opacity: 0.88;
@@ -128,9 +130,9 @@
     flex: none;
     border: 0;
     border-radius: 999px;
-    padding: 13px 22px;
+    padding: clamp(11px, 0.95vw, 19px) clamp(18px, 1.6vw, 32px);
     font-family: var(--ui);
-    font-size: 15px;
+    font-size: clamp(13px, 0.95vw, 19px);
     font-weight: 600;
     color: #fff;
     cursor: pointer;
@@ -148,7 +150,7 @@
     position: absolute;
     inset: 0;
     perspective: 1200px;
-    perspective-origin: 50% 46%;
+    perspective-origin: 50% 50%;
     transform-style: preserve-3d;
     z-index: 1;
     pointer-events: none;
@@ -157,7 +159,7 @@
   .card {
     position: absolute;
     left: 50%;
-    top: 46%;
+    top: 50%;
     width: 300px;
     height: 200px;
     margin-left: -150px;
@@ -174,7 +176,9 @@
     background: #fff;
     overflow: hidden;
     position: relative;
-    box-shadow: 0 24px 60px rgba(2, 20, 92, 0.22);
+    /* the rough has flat white cards — a shadow only appears as a card
+       lifts toward the cursor */
+    box-shadow: none;
     will-change: filter, opacity, box-shadow;
   }
 
@@ -242,10 +246,12 @@
   .copy {
     position: absolute;
     left: 50%;
-    top: 46%;
-    width: min(1100px, 92vw);
-    margin-left: min(-550px, -46vw);
-    transform: translateY(-50%);
+    top: 50%;
+    width: min(1200px, 92vw);
+    /* centre with a transform, not margin maths — the old
+       margin-left: min(-550px, -46vw) picked the MORE negative value below
+       1196px wide and pulled the headline off-centre */
+    transform: translate(-50%, -50%);
     text-align: center;
     pointer-events: none;
   }
@@ -254,10 +260,25 @@
     font-family: var(--display);
     /* a narrow face needs more size and far less negative tracking than
        the wide grotesque this replaced */
-    font-size: clamp(3.1rem, 10.6vw, 8.8rem);
-    line-height: 0.86;
-    letter-spacing: -0.012em;
+    font-size: clamp(2.9rem, 7.4vw, 9.5rem);
+    line-height: 0.88;
+    letter-spacing: -0.015em;
     color: #000;
+    text-wrap: balance;
+  }
+  .copy p {
+    position: absolute;
+    top: calc(100% + clamp(16px, 2.1vw, 42px));
+    left: 50%;
+    transform: translateX(-50%);
+    margin: 0;
+    width: min(23em, 78vw);
+    font-family: var(--ui);
+    font-size: clamp(14px, 1.1vw, 22px);
+    font-weight: 400;
+    line-height: 1.45;
+    letter-spacing: -0.005em;
+    color: #05070d;
     text-wrap: balance;
   }
 
@@ -421,6 +442,7 @@
   <div class="stage is-scatter" id="stage">
     <div class="copy">
       <h1>Build games<br>with no code</h1>
+      <p>Describe a game. LAB writes the code, models the characters and builds the world.</p>
     </div>
   </div>
 
@@ -531,27 +553,25 @@ card.style.transform =
              file. Leave '' to keep the gradient placeholder.
              A .mp4 / .webm path becomes a muted autoplaying video.
        n/g   caption: title and genre. Set n to '' for no caption.
-       x/y   resting position in px, from the centre of the hero.
-       w/h   card size in px, at a 1920-wide viewport. It scales down.
+       x/y   resting position from the centre of the hero, in units of
+             the 2000 x 1010 design frame. Everything scales from there.
+       w/h   card size in the same units.
        d     depth, 0.3 (far, slow, small) to 1.4 (near, fast, big).
-       r     in-plane rotation in degrees. Keep it small, ±6.
+       r     in-plane rotation in degrees. The rough is axis-aligned, so
+             these are all 0; ±6 looks deliberate if you want tilt back.
        hue   placeholder colour only; ignored once src is set.
 
-     Add or remove rows freely — nothing is hardcoded to twelve.
+     Positions below are traced from the design rough. Add or remove
+     rows freely — nothing is hardcoded to seven.
      ============================================================ */
   var CARDS = [
-    { src: '', n: 'Neon Drift',   g: 'Racer',      x: -720, y: -320, w: 360, h: 250, d: 0.55, r: -3.5, hue: 268 },
-    { src: '', n: 'Tower Pop',    g: 'Puzzle',     x: -350, y: -268, w: 244, h: 236, d: 0.95, r:  2.5, hue: 192 },
-    { src: '', n: 'Sky Harvest',  g: 'Sim',        x:  205, y: -318, w: 430, h: 296, d: 0.70, r: -1.5, hue: 210 },
-    { src: '', n: 'Blockbound',   g: 'Platformer', x:  790, y: -186, w: 330, h: 240, d: 1.20, r:  4.0, hue: 322 },
-    { src: '', n: 'Ghost Mail',   g: 'Narrative',  x: -566, y:  212, w: 372, h: 300, d: 1.10, r: -2.0, hue: 286 },
-    { src: '', n: 'Pixel Reef',   g: 'Sandbox',    x:  -40, y:  412, w: 350, h: 250, d: 0.85, r:  1.5, hue: 158 },
-    { src: '', n: 'Loop Runner',  g: 'Endless',    x:  612, y:  196, w: 360, h: 244, d: 0.60, r: -4.0, hue: 232 },
-    { src: '', n: 'Cat Café',     g: 'Idle',       x: -888, y:  118, w: 262, h: 190, d: 1.30, r:  3.0, hue: 336 },
-    { src: '', n: 'Rift Tactics', g: 'Strategy',   x:  952, y:  330, w: 300, h: 210, d: 0.45, r: -2.5, hue: 246 },
-    { src: '', n: 'Bloom',        g: 'Puzzle',     x: -132, y: -486, w: 224, h: 162, d: 1.35, r:  5.0, hue: 300 },
-    { src: '', n: 'Static Field', g: 'Shooter',    x:  436, y:  474, w: 262, h: 182, d: 1.25, r: -5.5, hue: 204 },
-    { src: '', n: 'Paper Town',   g: 'Builder',    x: -824, y:  -58, w: 206, h: 152, d: 0.35, r:  2.0, hue: 176 }
+    { src: '', n: '', g: '', x: -833, y: -315, w: 385, h: 250, d: 0.75, r: 0, hue: 268 },
+    { src: '', n: '', g: '', x: -362, y: -239, w: 247, h: 247, d: 0.55, r: 0, hue: 192 },
+    { src: '', n: '', g: '', x:  303, y: -314, w: 430, h: 298, d: 0.95, r: 0, hue: 210 },
+    { src: '', n: '', g: '', x:  871, y: -182, w: 330, h: 250, d: 1.15, r: 0, hue: 322 },
+    { src: '', n: '', g: '', x: -531, y:  176, w: 372, h: 302, d: 1.25, r: 0, hue: 286 },
+    { src: '', n: '', g: '', x:   28, y:  385, w: 360, h: 250, d: 1.00, r: 0, hue: 158 },
+    { src: '', n: '', g: '', x:  586, y:  135, w: 357, h: 245, d: 0.85, r: 0, hue: 232 }
   ];
 
   var DATA = CARDS;
@@ -632,6 +652,10 @@ card.style.transform =
   var spread = 0.52;
   var ease = 0.06;
   var scale = 1;
+  var ySpread = 1;
+
+  // the design frame the CARDS coordinates are expressed in
+  var REF_W = 2000, REF_H = 1010;
 
   var x = 0, y = 0, tx = 0, ty = 0;        // damped pointer, normalised -0.5..0.5
   var cx = 0, cy = 0, tcx = 0, tcy = 0;    // damped cursor, in stage pixels
@@ -643,15 +667,21 @@ card.style.transform =
     W = stage.clientWidth;
     H = stage.clientHeight;
     originX = W / 2;
-    originY = H * 0.46;
-    scale = Math.max(0.38, Math.min(0.92, W / 1980));
+    originY = H * 0.5;
+
+    // card size follows width; vertical spread follows height, so the
+    // composition keeps bleeding off the top and bottom edges on a
+    // window that isn't the design's aspect ratio
+    scale = Math.max(0.3, Math.min(1.05, W / REF_W));
+    ySpread = Math.max(scale * 0.85, Math.min(scale * 1.6, H / REF_H));
+
     cards.forEach(function (c) {
       var w = c.data.w * scale, h = c.data.h * scale;
       c.el.style.width = w + 'px';
       c.el.style.height = h + 'px';
       c.el.style.marginLeft = (-w / 2) + 'px';
       c.el.style.marginTop = (-h / 2) + 'px';
-      c.face.style.borderRadius = Math.max(12, 22 * scale) + 'px';
+      c.face.style.borderRadius = Math.max(11, 26 * scale) + 'px';
     });
     if (!tPresent) { tcx = originX; tcy = originY; cx = tcx; cy = tcy; }
   }
@@ -701,7 +731,7 @@ card.style.transform =
 
         // resting position for this frame (base layout + global parallax drift)
         var px = c.data.x * scale - x * rangeX * d;
-        var py = c.data.y * scale - y * rangeY * d;
+        var py = c.data.y * ySpread - y * rangeY * d;
         var pz = (d - 0.85) * 150 * scale;
 
         // cursor attraction, measured from the resting position
@@ -718,11 +748,12 @@ card.style.transform =
           (pz + lift).toFixed(2) + 'px)' +
           ' rotate(' + c.data.r + 'deg)';
 
-        var b = quant((1 - Math.min(1, d / 1.35)) * 2, 1);
-        if (b !== c.lastBlur) {
-          c.face.style.filter = b ? 'blur(' + b + 'px)' : 'none';
-          c.face.style.opacity = (0.86 + 0.14 * Math.min(1, d / 1.35)).toFixed(2);
-          c.lastBlur = b;
+        // the rough's cards are flat opaque white — depth reads through
+        // size and parallax speed alone, with no blur or fade
+        if (c.lastBlur !== 0) {
+          c.face.style.filter = 'none';
+          c.face.style.opacity = '1';
+          c.lastBlur = 0;
         }
         shade(c, f);
       }
@@ -776,14 +807,16 @@ card.style.transform =
     field.style.opacity = (present * 0.55).toFixed(3);
   }
 
-  // a lifted card throws a longer shadow — quantised so it isn't restyled every frame
+  // cards sit flat by default; a shadow only grows as one lifts toward the
+  // cursor. Quantised so it isn't restyled every frame.
   function shade(c, f) {
     var s = quant(f, 0.25);
     if (s === c.lastShadow) return;
     c.lastShadow = s;
-    c.face.style.boxShadow =
-      '0 ' + (24 + 40 * s).toFixed(0) + 'px ' + (60 + 50 * s).toFixed(0) +
-      'px rgba(2, 20, 92, ' + (0.22 + 0.12 * s).toFixed(2) + ')';
+    c.face.style.boxShadow = s === 0
+      ? 'none'
+      : '0 ' + (22 * s).toFixed(0) + 'px ' + (56 * s).toFixed(0) +
+        'px rgba(2, 20, 92, ' + (0.26 * s).toFixed(2) + ')';
   }
 
   function frame() {
