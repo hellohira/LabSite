@@ -289,6 +289,24 @@
     text-wrap: balance;
   }
 
+  /* Cards sink into the gradient as they near the bottom. Layered OVER the
+     stage rather than masked inside it — a mask would force the stage to
+     flatten and collapse the 3D sorting. Invisible against the background,
+     which is already white down there; it only takes the cards. */
+  .veil {
+    position: absolute;
+    inset: auto 0 0 0;
+    height: 34%;
+    z-index: 200;
+    pointer-events: none;
+    background: linear-gradient(180deg,
+      rgba(255,255,255,0) 0%,
+      rgba(255,255,255,0.30) 34%,
+      rgba(255,255,255,0.78) 66%,
+      rgba(255,255,255,0.97) 88%,
+      #ffffff 100%);
+  }
+
   /* ---------- CURSOR FIELD ---------- */
 
   .field {
@@ -453,6 +471,8 @@
     </div>
   </div>
 
+  <div class="veil" aria-hidden="true"></div>
+
   <div class="field" id="field" aria-hidden="true"></div>
 
   <div class="panel">
@@ -583,6 +603,21 @@ card.style.transform =
       makes the cards fight the drag. Touch is left alone so the page still scrolls on a phone.
     </p>
 
+    <p>
+      The headline turns with the globe rather than floating flat on top of it, so the type takes real
+      perspective — it is the one thing on screen that tells you the space is genuinely dimensional and not a
+      clever flat trick.
+    </p>
+
+    <p>
+      Cards sink into the gradient as they approach the bottom. That fade is a white veil layered
+      <em>over</em> the stage, not a mask inside it: a mask forces the stage to flatten, which would collapse
+      the 3D sorting between the cards and the headline. Fading each card by its own centre was the other
+      option and it's worse — a card straddling the boundary should dissolve <em>across</em> itself, and
+      whole-card opacity deletes the bottom row outright instead. The veil is invisible against a background
+      that is already white down there; it only takes the cards.
+    </p>
+
     <p class="foot">
       One <span class="m">requestAnimationFrame</span> loop, nineteen nodes, no libraries. Blur is quantised to
       whole pixels on an inner element so the transformed node stays a clean 3D participant, and
@@ -595,7 +630,7 @@ card.style.transform =
 (function () {
   // bump this when the file changes — the console tells you at a glance
   // whether the copy you're looking at is the current one
-  console.log('%cLAB hero', 'font-weight:bold', 'build 5 — globe mode');
+  console.log('%cLAB hero', 'font-weight:bold', 'build 6 — 3D headline, bottom fade');
 
   var stage = document.getElementById('stage');
   var field = document.getElementById('field');
@@ -836,6 +871,11 @@ card.style.transform =
   hero.addEventListener('pointerup', endDrag);
   hero.addEventListener('pointercancel', endDrag);
 
+  var copyEl = document.querySelector('.copy');
+
+  // how far apart the composition sits, over and above the Spread control
+  var SPACING = 1.18;
+
   function quant(v, step) { return Math.round(v / step) * step; }
 
   // smooth 1 → 0 falloff over the reach radius
@@ -848,6 +888,7 @@ card.style.transform =
 
   function render() {
     var i, c, f, pullX, pullY, lift;
+    var textRotY = 0, textRotX = 0;
     var reach = (300 + 620 * reachPct) * scale;
     var amp = strength * present;
 
@@ -868,6 +909,8 @@ card.style.transform =
       // whole plane back so that side clears the headline instead of
       // cropping it. Cards far out at the edges still come forward.
       var planeZ = -70 * scale;
+      textRotY = -ay * 0.85;
+      textRotX = ax * 0.85;
       var planeSpin = ' rotateY(' + ay.toFixed(4) + 'rad) rotateX(' + ax.toFixed(4) + 'rad)';
 
       for (i = 0; i < N; i++) {
@@ -877,8 +920,8 @@ card.style.transform =
         // position ON the plane (u across, v down): base layout + parallax
         // drift + the dragged pan, so a drag slides the plane itself
         var panW = 0.7 + 0.3 * d;
-        var u = c.data.x * scale - x * rangeX * d + panX * panW;
-        var v = c.data.y * ySpread - y * rangeY * d + panY * panW;
+        var u = c.data.x * scale * SPACING - x * rangeX * d + panX * panW;
+        var v = c.data.y * ySpread * SPACING - y * rangeY * d + panY * panW;
         var off = (d - 0.85) * 120 * scale;   // how far it floats off the plane
 
         // rotate that plane point into world space: rotateX(ax) then rotateY(ay)
@@ -888,8 +931,9 @@ card.style.transform =
 
         // where it lands on screen, so the cursor can find it
         var proj = PERSP / (PERSP - wz);
+        var sy = originY + wy * proj;
         var dx = cx - (originX + wx * proj);
-        var dy = cy - (originY + wy * proj);
+        var dy = cy - sy;
         f = amp ? influence(dx, dy, reach) : 0;
         // applied after the rotations, so the card slides ALONG the plane
         // and lifts along the plane's normal. Divided by proj so the pull
@@ -904,13 +948,7 @@ card.style.transform =
           ' rotate(' + c.data.r + 'deg)' +
           ' translate3d(' + pullX.toFixed(2) + 'px,' + pullY.toFixed(2) + 'px,' + lift.toFixed(2) + 'px)';
 
-        // the rough's cards are flat opaque white — depth reads through
-        // size and parallax speed alone, with no blur or fade
-        if (c.lastBlur !== 0) {
-          c.face.style.filter = 'none';
-          c.face.style.opacity = '1';
-          c.lastBlur = 0;
-        }
+        if (c.lastBlur !== 0) { c.face.style.filter = 'none'; c.lastBlur = 0; }
         shade(c, f);
       }
     } else {
@@ -936,6 +974,8 @@ card.style.transform =
       // where you point, the globe turns
       var yaw = -x * 0.34 - panX / Math.max(320, W) * 1.1;
       var pitch = y * 0.22 - panY / Math.max(320, H) * 0.7;
+      textRotY = -yaw * 2.2;
+      textRotX = pitch * 2.2;
 
       for (i = 0; i < N; i++) {
         c = cards[i];
@@ -945,8 +985,8 @@ card.style.transform =
         // straight in as an angle makes tan() throw the outer cards off the
         // edge and hollow out the middle. Inverting it keeps the resting
         // composition identical to Plane mode — only the orientation differs.
-        var az0 = Math.atan(c.data.x * scale * openness / PERSP);
-        var el0 = Math.atan(c.data.y * ySpread * openness * Math.cos(az0) / PERSP);
+        var az0 = Math.atan(c.data.x * scale * openness * SPACING / PERSP);
+        var el0 = Math.atan(c.data.y * ySpread * openness * SPACING * Math.cos(az0) / PERSP);
         var az = az0 + yaw;
         var el = el0 + pitch;
         // never let a card swing past the camera's shoulder
@@ -975,14 +1015,17 @@ card.style.transform =
           ' translate3d(' + pullX.toFixed(2) + 'px,' + pullY.toFixed(2) + 'px,' +
           lift.toFixed(2) + 'px)';
 
-        if (c.lastBlur !== 0) {
-          c.face.style.filter = 'none';
-          c.face.style.opacity = '1';
-          c.lastBlur = 0;
-        }
+        if (c.lastBlur !== 0) { c.face.style.filter = 'none'; c.lastBlur = 0; }
         shade(c, f);
       }
     }
+
+    // The headline rides the same space rather than floating flat on top of
+    // it — it turns with the globe, so the type takes real perspective.
+    copyEl.style.transform =
+      'translate(-50%, -50%)' +
+      ' rotateY(' + textRotY.toFixed(4) + 'rad)' +
+      ' rotateX(' + textRotX.toFixed(4) + 'rad)';
 
     field.style.transform =
       'translate3d(' + cx.toFixed(1) + 'px,' + cy.toFixed(1) + 'px,0) scale(' +
