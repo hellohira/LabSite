@@ -261,6 +261,25 @@
     text-wrap: balance;
   }
 
+  /* The mirror of the veil, at the top. Sits above the stage so it sinks the
+     tiles back into the gradient behind the header, and below the nav's
+     z-index so the mark and links stay crisp on top of it. Matched to the
+     gradient's own blue at y=0, so against the background it is invisible —
+     it only takes the tiles. */
+  .scrim {
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 24%;
+    z-index: 200;
+    pointer-events: none;
+    background: linear-gradient(180deg,
+      rgba(4, 51, 234, 0.94) 0%,
+      rgba(7, 66, 239, 0.74) 34%,
+      rgba(10, 87, 244, 0.34) 66%,
+      rgba(16, 110, 248, 0.10) 86%,
+      rgba(21, 146, 255, 0) 100%);
+  }
+
   /* Cards sink into the gradient as they near the bottom. Layered OVER the
      stage rather than masked inside it — a mask would force the stage to
      flatten and collapse the 3D sorting. Invisible against the background,
@@ -464,6 +483,7 @@
     </div>
   </div>
 
+  <div class="scrim" aria-hidden="true"></div>
   <div class="veil" aria-hidden="true"></div>
 
   <div class="panel">
@@ -489,7 +509,7 @@
 
     <div class="knob">
       <label for="spread">Spread</label>
-      <input type="range" id="spread" min="0" max="100" value="52">
+      <input type="range" id="spread" min="0" max="100" value="44">
     </div>
 
     <div class="knob">
@@ -623,7 +643,7 @@ card.style.transform =
 (function () {
   // bump this when the file changes — the console tells you at a glance
   // whether the copy you're looking at is the current one
-  console.log('%cLAB hero', 'font-weight:bold', 'build 14 — header and subcopy back');
+  console.log('%cLAB hero', 'font-weight:bold', 'build 15 — header scrim');
 
   var stage = document.getElementById('stage');
   var headEl = document.querySelector('.copy h1');
@@ -772,7 +792,7 @@ card.style.transform =
   var mode = 'globe';
   var strength = 0.58;     // pull
   var reachPct = 0.55;     // influence radius
-  var spread = 0.52;
+  var spread = 0.44;
   var ease = 0.06;
   var tiltAmt = 1;            // plane tilt multiplier, 1 = nominal
   var scale = 1;
