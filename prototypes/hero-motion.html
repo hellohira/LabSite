@@ -152,10 +152,9 @@
     background: #fff;
     overflow: hidden;
     position: relative;
-    /* barely-there resting shadow. Blank white cards that overlap would
-       otherwise fuse into one white mass — real photos make this
-       unnecessary, so drop it once the images are in. */
-    box-shadow: 0 6px 24px rgba(2, 20, 92, 0.10);
+    /* set per tile from its distance in shade(); this is only the value
+       before the first frame lands */
+    box-shadow: 0 14px 36px rgba(2, 20, 92, 0.22);
     will-change: filter, opacity, box-shadow;
   }
 
@@ -261,25 +260,6 @@
     text-wrap: balance;
   }
 
-  /* The mirror of the veil, at the top. Sits above the stage so it sinks the
-     tiles back into the gradient behind the header, and below the nav's
-     z-index so the mark and links stay crisp on top of it. Matched to the
-     gradient's own blue at y=0, so against the background it is invisible —
-     it only takes the tiles. */
-  .scrim {
-    position: absolute;
-    inset: 0 0 auto 0;
-    height: 24%;
-    z-index: 200;
-    pointer-events: none;
-    background: linear-gradient(180deg,
-      rgba(4, 51, 234, 0.94) 0%,
-      rgba(7, 66, 239, 0.74) 34%,
-      rgba(10, 87, 244, 0.34) 66%,
-      rgba(16, 110, 248, 0.10) 86%,
-      rgba(21, 146, 255, 0) 100%);
-  }
-
   /* Cards sink into the gradient as they near the bottom. Layered OVER the
      stage rather than masked inside it — a mask would force the stage to
      flatten and collapse the 3D sorting. Invisible against the background,
@@ -316,7 +296,7 @@
     width: clamp(38px, 3.3vw, 62px);
     height: auto;
   }
-  .mark path { fill: #000; }
+  .mark path { fill: #fff; }
 
   .nav-links {
     display: flex;
@@ -327,7 +307,7 @@
     list-style: none;
   }
   .nav-links a {
-    color: #000;
+    color: #fff;
     text-decoration: none;
     font-size: clamp(13px, 0.95vw, 19px);
     font-weight: 600;
@@ -483,7 +463,6 @@
     </div>
   </div>
 
-  <div class="scrim" aria-hidden="true"></div>
   <div class="veil" aria-hidden="true"></div>
 
   <div class="panel">
@@ -643,7 +622,7 @@ card.style.transform =
 (function () {
   // bump this when the file changes — the console tells you at a glance
   // whether the copy you're looking at is the current one
-  console.log('%cLAB hero', 'font-weight:bold', 'build 15 — header scrim');
+  console.log('%cLAB hero', 'font-weight:bold', 'build 16 — depth shadows, far tiles');
 
   var stage = document.getElementById('stage');
   var headEl = document.querySelector('.copy h1');
@@ -700,39 +679,45 @@ card.style.transform =
   var LATTICE_W = 0.76, LATTICE_H = 0.72;
 
   var SLOTS = [
-    { img: 0, w: 620, h: 366, jx: -0.12, jy:  0.10 },
-    { img: 1, w: 490, h: 308, jx:  0.10, jy: -0.12 },
-    { img: 2, w: 571, h: 323, jx: -0.06, jy:  0.13 },
-    { img: 3, w: 516, h: 305, jx:  0.13, jy: -0.08 },
-    { img: 4, w: 450, h: 285, jx: -0.11, jy:  0.12 },
-    { img: 5, w: 605, h: 340, jx:  0.08, jy: -0.10 },
+    // cu/cv are lattice cells from centre; the 6 x 2 grid straddles the
+    // centre line, so its rows sit at cv = -0.5 and +0.5.
+    // d is distance: 1 is near, 2+ is far. It divides into the apparent
+    // size, so a tile at 2.1 reads about a third the size of one at 1.
+    { img: 0, cu: -2.62, cv: -0.42, w: 620, h: 366, d: 1.15 },
+    { img: 1, cu: -1.42, cv: -0.58, w: 490, h: 308, d: 1.55 },
+    { img: 2, cu: -0.56, cv: -0.40, w: 571, h: 323, d: 1.02 },
+    { img: 3, cu:  0.62, cv: -0.57, w: 516, h: 305, d: 1.35 },
+    { img: 4, cu:  1.44, cv: -0.42, w: 450, h: 285, d: 1.00 },
+    { img: 5, cu:  2.58, cv: -0.55, w: 605, h: 340, d: 1.72 },
 
-    // Second row. The repeats sit three columns from their twins — the most
-    // a 6-wide lattice allows — and the grid wraps, so the two rows are
-    // neighbours in both directions.
-    { img: 3, w: 536, h: 317, jx:  0.11, jy:  0.09 },
-    { img: 6, w: 475, h: 294, jx: -0.09, jy: -0.13 },
-    { img: 7, w: 582, h: 328, jx:  0.06, jy:  0.12 },
-    { img: 0, w: 504, h: 298, jx: -0.13, jy: -0.09 },
-    { img: 1, w: 556, h: 314, jx:  0.12, jy:  0.11 },
-    { img: 2, w: 458, h: 288, jx: -0.08, jy: -0.12 }
+    { img: 3, cu: -2.44, cv:  0.55, w: 536, h: 317, d: 1.45 },
+    { img: 6, cu: -1.58, cv:  0.42, w: 475, h: 294, d: 1.08 },
+    { img: 7, cu: -0.62, cv:  0.57, w: 582, h: 328, d: 1.90 },
+    { img: 0, cu:  0.56, cv:  0.43, w: 504, h: 298, d: 1.20 },
+    { img: 1, cu:  1.62, cv:  0.56, w: 556, h: 314, d: 0.98 },
+    { img: 2, cu:  2.42, cv:  0.41, w: 458, h: 288, d: 1.60 },
+
+    // The centre band the 6 x 2 grid leaves empty. These sit far back, so
+    // they fill it at a fraction of the size and read as distance rather
+    // than crowding the type.
+    { img: 4, cu: -2.28, cv:  0.06, w: 600, h: 352, d: 2.10 },
+    { img: 5, cu: -1.38, cv: -0.13, w: 560, h: 330, d: 2.15 },
+    { img: 6, cu:  1.40, cv:  0.12, w: 580, h: 340, d: 2.05 },
+    { img: 7, cu:  2.24, cv: -0.07, w: 540, h: 318, d: 2.15 }
   ];
 
-  var DATA = SLOTS.map(function (s, i) {
-    // position on the lattice, in cells from centre. Angles are resolved
-    // per frame, since the cell size follows the viewport.
-    var cu = (i % COLS) - (COLS - 1) / 2 + s.jx;
-    var cv = Math.floor(i / COLS) - (ROWS - 1) / 2 + s.jy;
+  var DATA = SLOTS.map(function (s) {
     return {
       name: IMAGES[s.img],
       w: s.w, h: s.h, r: 0,
       hue: (s.img * 47 + 150) % 360,
-      cu: cu,
-      cv: cv,
+      cu: s.cu,
+      cv: s.cv,
+      depth: s.d,
       // Plane mode reads the same lattice as flat pixels
-      x: cu * 520,
-      y: cv * 330,
-      d: 0.55 + ((i * 5) % 9) / 9 * 0.8
+      x: s.cu * 330,
+      y: s.cv * 560,
+      d: 1.35 - (s.d - 0.98) * 0.5
     };
   });
 
@@ -779,10 +764,18 @@ card.style.transform =
     el.appendChild(face);
     stage.appendChild(el);
 
+    // A near tile throws a long soft shadow, a distant one barely any. The
+    // shadow is in the tile's own space, so perspective shrinks it again on
+    // top of this — the two compound, which is what sells the distance.
+    var t = Math.max(0, Math.min(1, (d.depth - 0.98) / 1.17));
+
     cards.push({
       el: el,
       face: face,
       data: d,
+      shY: 26 - 21 * t,
+      shB: 58 - 44 * t,
+      shA: 0.34 - 0.24 * t,
       lastBlur: -1,
       lastShadow: -1
     });
@@ -1014,7 +1007,7 @@ card.style.transform =
       // tile harder without moving any of them, which is exactly the
       // isometric-globe read. R tracks it so the tiles keep their size.
       setPerspective(PLANE_PERSP / (0.62 + tiltAmt * 0.98));
-      var R = persp * 1.70;
+      var Rbase = persp * 1.70;
       var openness = 0.55 + spread * 0.95;
 
       // The lattice is laid out in SCREEN space, not in angle. Stepping by a
@@ -1051,6 +1044,8 @@ card.style.transform =
         var az = Math.atan(uPx / persp);
         var el = Math.atan(vPx * Math.cos(az) / persp);
 
+        // each tile sits at its own distance on the same sphere
+        var R = Rbase * c.data.depth;
         var cosA = Math.cos(az), cosE = Math.cos(el);
         var proj = persp / (R * cosA * cosE);
         var sx = originX + persp * Math.tan(az);
@@ -1089,10 +1084,11 @@ card.style.transform =
     var s = quant(f, 0.25);
     if (s === c.lastShadow) return;
     c.lastShadow = s;
-    c.face.style.boxShadow = s === 0
-      ? '0 6px 24px rgba(2, 20, 92, 0.10)'
-      : '0 ' + (6 + 26 * s).toFixed(0) + 'px ' + (24 + 44 * s).toFixed(0) +
-        'px rgba(2, 20, 92, ' + (0.1 + 0.18 * s).toFixed(2) + ')';
+    // resting shadow for this tile's distance, grown as the cursor lifts it
+    c.face.style.boxShadow =
+      '0 ' + (c.shY * (1 + 1.1 * s)).toFixed(0) + 'px ' +
+      (c.shB * (1 + 0.9 * s)).toFixed(0) + 'px ' +
+      'rgba(2, 20, 92, ' + (c.shA + 0.16 * s).toFixed(2) + ')';
   }
 
   function frame() {
