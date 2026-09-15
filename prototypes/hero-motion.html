@@ -4,22 +4,29 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Card Drift</title>
+
+<!-- ============================================================
+     FONTS — step 1 of 2. Swap the families in this URL.
+     Then update --display / --ui below to match. That's the whole job.
+     ============================================================ -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
 
 <style>
   :root {
+    /* FONTS — step 2 of 2. Always keep a real fallback after the custom face,
+       or the page silently reflows when the webfont is slow. */
+    --display: "Archivo Black", "Helvetica Neue", Arial, sans-serif;  /* headline */
+    --ui:      "Archivo", "Helvetica Neue", Arial, sans-serif;        /* nav, buttons */
+    --mono:    "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
     --ink:      #05070d;
     --paper:    #f7f8fb;
     --paper-2:  #ffffff;
     --rule:     #dfe3ee;
     --muted:    #5a6376;
     --accent:   #0540f2;
-
-    --display: "Archivo Black", "Helvetica Neue", Arial, sans-serif;
-    --ui:      "Archivo", "Helvetica Neue", Arial, sans-serif;
-    --mono:    "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
   }
 
   @media (prefers-color-scheme: dark) {
@@ -158,7 +165,19 @@
     will-change: filter, opacity, box-shadow;
   }
 
-  /* art fill — stands in for the game thumbnails */
+  /* real media — fills the card edge to edge, whatever its aspect ratio */
+  .face img,
+  .face video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  /* placeholder fill — only on cards that have no media of their own */
   .face::before {
     content: "";
     position: absolute;
@@ -170,7 +189,21 @@
       radial-gradient(100% 92% at 86% 94%, hsl(calc(var(--h) + 48) 84% 62%) 0%, transparent 66%),
       linear-gradient(152deg, hsl(calc(var(--h) - 14) 60% 88%), hsl(calc(var(--h) + 26) 70% 72%));
   }
-  .stage.show-art .face::before { opacity: 1; }
+  .stage.show-art .face:not(.has-media)::before { opacity: 1; }
+
+  /* caption sits above the media and needs its own contrast */
+  .face.has-media .tag {
+    color: #fff;
+    text-shadow: 0 1px 6px rgba(0, 0, 0, 0.55);
+  }
+  .face.has-media::after {
+    content: "";
+    position: absolute;
+    inset: auto 0 0 0;
+    height: 42%;
+    z-index: 1;   /* over the media, under the caption */
+    background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.42));
+  }
 
   .tag {
     position: absolute;
@@ -186,8 +219,9 @@
     text-transform: uppercase;
     color: rgba(5, 7, 13, 0.34);
     transition: color 320ms ease;
+    z-index: 2;
   }
-  .stage.show-art .tag { color: rgba(5, 7, 13, 0.52); }
+  .stage.show-art .face:not(.has-media) .tag { color: rgba(5, 7, 13, 0.52); }
   .tag b { font-weight: 500; }
 
   /* ---------- HEADLINE ---------- */
@@ -405,7 +439,7 @@
 
     <label class="check" for="art">
       <input type="checkbox" id="art">
-      Art
+      Fill
     </label>
   </div>
 </section>
@@ -475,23 +509,68 @@ card.style.transform =
   var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   var PERSP = 1200;
 
-  var DATA = [
-    { n: 'Neon Drift',   g: 'Racer',       x: -720, y: -320, w: 360, h: 250, d: 0.55, r: -3.5, hue: 268 },
-    { n: 'Tower Pop',    g: 'Puzzle',      x: -350, y: -268, w: 244, h: 236, d: 0.95, r:  2.5, hue: 192 },
-    { n: 'Sky Harvest',  g: 'Sim',         x:  205, y: -318, w: 430, h: 296, d: 0.70, r: -1.5, hue: 210 },
-    { n: 'Blockbound',   g: 'Platformer',  x:  790, y: -186, w: 330, h: 240, d: 1.20, r:  4.0, hue: 322 },
-    { n: 'Ghost Mail',   g: 'Narrative',   x: -566, y:  212, w: 372, h: 300, d: 1.10, r: -2.0, hue: 286 },
-    { n: 'Pixel Reef',   g: 'Sandbox',     x:  -40, y:  412, w: 350, h: 250, d: 0.85, r:  1.5, hue: 158 },
-    { n: 'Loop Runner',  g: 'Endless',     x:  612, y:  196, w: 360, h: 244, d: 0.60, r: -4.0, hue: 232 },
-    { n: 'Cat Café',     g: 'Idle',        x: -888, y:  118, w: 262, h: 190, d: 1.30, r:  3.0, hue: 336 },
-    { n: 'Rift Tactics', g: 'Strategy',    x:  952, y:  330, w: 300, h: 210, d: 0.45, r: -2.5, hue: 246 },
-    { n: 'Bloom',        g: 'Puzzle',      x: -132, y: -486, w: 224, h: 162, d: 1.35, r:  5.0, hue: 300 },
-    { n: 'Static Field', g: 'Shooter',     x:  436, y:  474, w: 262, h: 182, d: 1.25, r: -5.5, hue: 204 },
-    { n: 'Paper Town',   g: 'Builder',     x: -824, y:  -58, w: 206, h: 152, d: 0.35, r:  2.0, hue: 176 }
+  /* ============================================================
+     YOUR MEDIA — the only block you need to touch to add photos.
+
+       src   'images/whatever.jpg' — put files in images/ next to this
+             file. Leave '' to keep the gradient placeholder.
+             A .mp4 / .webm path becomes a muted autoplaying video.
+       n/g   caption: title and genre. Set n to '' for no caption.
+       x/y   resting position in px, from the centre of the hero.
+       w/h   card size in px, at a 1920-wide viewport. It scales down.
+       d     depth, 0.3 (far, slow, small) to 1.4 (near, fast, big).
+       r     in-plane rotation in degrees. Keep it small, ±6.
+       hue   placeholder colour only; ignored once src is set.
+
+     Add or remove rows freely — nothing is hardcoded to twelve.
+     ============================================================ */
+  var CARDS = [
+    { src: '', n: 'Neon Drift',   g: 'Racer',      x: -720, y: -320, w: 360, h: 250, d: 0.55, r: -3.5, hue: 268 },
+    { src: '', n: 'Tower Pop',    g: 'Puzzle',     x: -350, y: -268, w: 244, h: 236, d: 0.95, r:  2.5, hue: 192 },
+    { src: '', n: 'Sky Harvest',  g: 'Sim',        x:  205, y: -318, w: 430, h: 296, d: 0.70, r: -1.5, hue: 210 },
+    { src: '', n: 'Blockbound',   g: 'Platformer', x:  790, y: -186, w: 330, h: 240, d: 1.20, r:  4.0, hue: 322 },
+    { src: '', n: 'Ghost Mail',   g: 'Narrative',  x: -566, y:  212, w: 372, h: 300, d: 1.10, r: -2.0, hue: 286 },
+    { src: '', n: 'Pixel Reef',   g: 'Sandbox',    x:  -40, y:  412, w: 350, h: 250, d: 0.85, r:  1.5, hue: 158 },
+    { src: '', n: 'Loop Runner',  g: 'Endless',    x:  612, y:  196, w: 360, h: 244, d: 0.60, r: -4.0, hue: 232 },
+    { src: '', n: 'Cat Café',     g: 'Idle',       x: -888, y:  118, w: 262, h: 190, d: 1.30, r:  3.0, hue: 336 },
+    { src: '', n: 'Rift Tactics', g: 'Strategy',   x:  952, y:  330, w: 300, h: 210, d: 0.45, r: -2.5, hue: 246 },
+    { src: '', n: 'Bloom',        g: 'Puzzle',     x: -132, y: -486, w: 224, h: 162, d: 1.35, r:  5.0, hue: 300 },
+    { src: '', n: 'Static Field', g: 'Shooter',    x:  436, y:  474, w: 262, h: 182, d: 1.25, r: -5.5, hue: 204 },
+    { src: '', n: 'Paper Town',   g: 'Builder',    x: -824, y:  -58, w: 206, h: 152, d: 0.35, r:  2.0, hue: 176 }
   ];
 
+  var DATA = CARDS;
   var N = DATA.length;
   var cards = [];
+
+  function mediaFor(d, face) {
+    if (!d.src) return null;
+
+    if (/\.(mp4|webm|mov)$/i.test(d.src)) {
+      var v = document.createElement('video');
+      v.src = d.src;
+      v.muted = true;
+      v.loop = true;
+      v.playsInline = true;
+      v.autoplay = true;
+      v.preload = 'metadata';
+      if (d.poster) v.poster = d.poster;
+      return v;
+    }
+
+    var img = document.createElement('img');
+    img.src = d.src;
+    img.alt = '';
+    img.decoding = 'async';
+    // every card is in the first screen, so none of them are lazy
+    img.fetchPriority = d.d > 0.9 ? 'high' : 'auto';
+    // a missing file falls back to the placeholder instead of a broken card
+    img.addEventListener('error', function () {
+      img.remove();
+      face.classList.remove('has-media');
+    });
+    return img;
+  }
 
   DATA.forEach(function (d, i) {
     var el = document.createElement('article');
@@ -501,7 +580,22 @@ card.style.transform =
 
     var face = document.createElement('div');
     face.className = 'face';
-    face.innerHTML = '<div class="tag"><b>' + d.n + '</b><span>' + d.g + '</span></div>';
+
+    var media = mediaFor(d, face);
+    if (media) {
+      face.classList.add('has-media');
+      face.appendChild(media);
+    }
+
+    if (d.n) {
+      var tag = document.createElement('div');
+      tag.className = 'tag';
+      tag.innerHTML = '<b></b><span></span>';
+      tag.firstChild.textContent = d.n;
+      tag.lastChild.textContent = d.g || '';
+      face.appendChild(tag);
+    }
+
     el.appendChild(face);
     stage.appendChild(el);
 
