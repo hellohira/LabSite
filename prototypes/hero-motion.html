@@ -1,0 +1,635 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Card Drift</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+
+<style>
+  :root {
+    --blue-900: #0530e8;
+    --blue-700: #1573ff;
+    --blue-400: #4ec3ff;
+    --blue-100: #cdeeff;
+    --ink:      #05070d;
+    --paper:    #f7f8fb;
+    --paper-2:  #ffffff;
+    --rule:     #dfe3ee;
+    --muted:    #5a6376;
+    --accent:   #0540f2;
+
+    --display: "Archivo Black", "Helvetica Neue", Arial, sans-serif;
+    --ui:      "Archivo", "Helvetica Neue", Arial, sans-serif;
+    --mono:    "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:   #0b0e16;
+      --paper-2: #12161f;
+      --rule:    #252b39;
+      --ink:     #eef1f7;
+      --muted:   #99a2b8;
+      --accent:  #5b9bff;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:   #0b0e16;
+    --paper-2: #12161f;
+    --rule:    #252b39;
+    --ink:     #eef1f7;
+    --muted:   #99a2b8;
+    --accent:  #5b9bff;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--ui);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---------- HERO ---------- */
+
+  .hero {
+    position: relative;
+    min-height: 82svh;
+    overflow: hidden;
+    isolation: isolate;
+    /* committed single-theme block: the blue world from the design rough */
+    background:
+      linear-gradient(
+        180deg,
+        #0530e8   0%,
+        #0b4ff5  18%,
+        #1a8dff  42%,
+        #62cfff  66%,
+        #c8efff  84%,
+        #ffffff 100%
+      );
+  }
+
+  /* ---------- NAV ---------- */
+
+  .nav {
+    position: relative;
+    z-index: 400;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    padding: 22px clamp(16px, 3vw, 40px);
+    padding-top: calc(22px + env(safe-area-inset-top, 0px));
+  }
+
+  .mark { flex: none; display: block; }
+  .mark circle { fill: #000; }
+
+  .nav-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: clamp(14px, 2.4vw, 34px);
+    margin: 0 auto;
+    padding: 0;
+    list-style: none;
+  }
+  .nav-links a {
+    color: #000;
+    text-decoration: none;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    opacity: 0.88;
+  }
+  .nav-links a:hover { opacity: 1; }
+
+  .cta {
+    flex: none;
+    border: 0;
+    border-radius: 999px;
+    padding: 13px 22px;
+    font-family: var(--ui);
+    font-size: 15px;
+    font-weight: 600;
+    color: #fff;
+    cursor: pointer;
+    background: linear-gradient(180deg, #2a6bff, #0b34e0);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.45),
+      inset 0 0 0 1px rgba(255,255,255,0.22),
+      0 6px 18px rgba(3, 26, 120, 0.28);
+  }
+  .cta:hover { filter: brightness(1.08); }
+
+  /* ---------- STAGE ---------- */
+
+  .stage {
+    position: absolute;
+    inset: 0;
+    perspective: 1200px;
+    perspective-origin: 50% 46%;
+    z-index: 1;
+    pointer-events: none;
+  }
+  .stage.is-cyl { transform-style: preserve-3d; }
+
+  .card {
+    position: absolute;
+    left: 50%;
+    top: 46%;
+    width: 300px;
+    height: 200px;
+    margin-left: -150px;
+    margin-top: -100px;
+    will-change: transform;
+    transform-origin: 50% 50%;
+  }
+
+  .face {
+    width: 100%;
+    height: 100%;
+    border-radius: 22px;
+    background: #fff;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 24px 60px rgba(2, 20, 92, 0.22);
+    will-change: filter, opacity;
+  }
+
+  /* art fill — stands in for the game thumbnails */
+  .face::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 320ms ease;
+    background:
+      radial-gradient(95% 78% at 22% 16%, hsl(var(--h) 92% 80%) 0%, transparent 62%),
+      radial-gradient(100% 92% at 86% 94%, hsl(calc(var(--h) + 48) 84% 62%) 0%, transparent 66%),
+      linear-gradient(152deg, hsl(calc(var(--h) - 14) 60% 88%), hsl(calc(var(--h) + 26) 70% 72%));
+  }
+  .stage.show-art .face::before { opacity: 1; }
+
+  .tag {
+    position: absolute;
+    left: 14px;
+    bottom: 12px;
+    right: 14px;
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: rgba(5, 7, 13, 0.34);
+    transition: color 320ms ease;
+  }
+  .stage.show-art .tag { color: rgba(5, 7, 13, 0.52); }
+  .tag b { font-weight: 500; }
+
+  /* ---------- HEADLINE ---------- */
+
+  .copy {
+    position: absolute;
+    left: 50%;
+    top: 46%;
+    width: min(1100px, 92vw);
+    margin-left: min(-550px, -46vw);
+    transform: translateY(-50%);
+    text-align: center;
+    z-index: 50;             /* between back and front cards in scatter mode */
+    pointer-events: none;
+  }
+  .copy h1 {
+    margin: 0;
+    font-family: var(--display);
+    font-size: clamp(2.6rem, 8.4vw, 7rem);
+    line-height: 0.88;
+    letter-spacing: -0.035em;
+    color: #000;
+    text-wrap: balance;
+  }
+
+  /* ---------- CONTROL PANEL ---------- */
+
+  .panel {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: calc(22px + env(safe-area-inset-bottom, 0px));
+    z-index: 400;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 8px 18px;
+    max-width: calc(100vw - 32px);
+    padding: 10px 14px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.92);
+    box-shadow: 0 10px 34px rgba(2, 20, 92, 0.18);
+    backdrop-filter: blur(8px);
+  }
+
+  .seg { display: flex; gap: 4px; padding: 3px; border-radius: 999px; background: #eef1f7; }
+  .seg button {
+    border: 0;
+    border-radius: 999px;
+    padding: 7px 15px;
+    font-family: var(--ui);
+    font-size: 13px;
+    font-weight: 600;
+    color: #05070d;
+    background: transparent;
+    cursor: pointer;
+  }
+  .seg button[aria-pressed="true"] { background: #05070d; color: #fff; }
+
+  .knob { display: flex; align-items: center; gap: 9px; }
+  .knob label {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #5a6376;
+  }
+  .knob input[type="range"] { width: 92px; accent-color: #0540f2; }
+
+  .check { display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 600; color: #05070d; }
+  .check input { accent-color: #0540f2; width: 15px; height: 15px; }
+
+  .panel :focus-visible,
+  .nav :focus-visible { outline: 2px solid #0540f2; outline-offset: 3px; border-radius: 6px; }
+
+  /* ---------- NOTES ---------- */
+
+  .notes {
+    background: var(--paper);
+    padding: clamp(40px, 6vw, 76px) clamp(16px, 5vw, 40px);
+  }
+  .notes-inner { max-width: 760px; margin: 0 auto; display: grid; gap: 26px; }
+
+  .eyebrow {
+    margin: 0;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .notes h2 {
+    margin: 0;
+    font-family: var(--display);
+    font-size: clamp(1.6rem, 3.4vw, 2.3rem);
+    letter-spacing: -0.03em;
+    line-height: 1.02;
+  }
+  .notes p { margin: 0; max-width: 62ch; line-height: 1.62; color: var(--muted); font-size: 15.5px; }
+  .notes p strong { color: var(--ink); font-weight: 600; }
+
+  .steps { display: grid; gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: 14px; overflow: hidden; }
+  .step { background: var(--paper-2); padding: 18px 20px; display: grid; gap: 6px; }
+  .step h3 {
+    margin: 0;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .step p { font-size: 14.5px; line-height: 1.55; }
+
+  pre {
+    margin: 0;
+    overflow-x: auto;
+    padding: 18px 20px;
+    border-radius: 14px;
+    background: #0b0e16;
+    color: #dfe6f5;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.7;
+    border: 1px solid var(--rule);
+  }
+  pre .c { color: #6d7a96; }
+  pre .k { color: #7fb4ff; }
+  pre .s { color: #8fe3b0; }
+
+  .foot { font-size: 13.5px; color: var(--muted); border-top: 1px solid var(--rule); padding-top: 20px; }
+
+  @media (max-width: 720px) {
+    .nav-links { display: none; }
+    .nav { justify-content: space-between; }
+    .knob { display: none; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .face, .card { transition: none !important; }
+  }
+</style>
+
+</head>
+<body>
+<section class="hero">
+  <header class="nav">
+    <svg class="mark" width="46" height="34" viewBox="0 0 46 34" aria-label="Studio home">
+      <circle cx="23" cy="7" r="5"></circle>
+      <circle cx="10" cy="15" r="5"></circle>
+      <circle cx="36" cy="15" r="5"></circle>
+      <circle cx="16" cy="28" r="4"></circle>
+      <circle cx="31" cy="27" r="3.4"></circle>
+    </svg>
+    <ul class="nav-links">
+      <li><a href="#notes">How it works</a></li>
+      <li><a href="#notes">Games</a></li>
+      <li><a href="#notes">Builders</a></li>
+      <li><a href="#notes">Discord</a></li>
+    </ul>
+    <button class="cta" type="button">Try the builder</button>
+  </header>
+
+  <div class="stage is-scatter" id="stage">
+    <div class="copy">
+      <h1>Build games<br>with no code</h1>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="seg" role="group" aria-label="Background motion mode">
+      <button type="button" id="mScatter" aria-pressed="true">Scatter</button>
+      <button type="button" id="mCyl" aria-pressed="false">Cylinder</button>
+    </div>
+
+    <div class="knob">
+      <label for="spread">Spread</label>
+      <input type="range" id="spread" min="0" max="100" value="52">
+    </div>
+
+    <div class="knob">
+      <label for="ease">Ease</label>
+      <input type="range" id="ease" min="1" max="20" value="6">
+    </div>
+
+    <label class="check" for="art">
+      <input type="checkbox" id="art">
+      Art
+    </label>
+  </div>
+</section>
+
+<section class="notes" id="notes">
+  <div class="notes-inner">
+    <p class="eyebrow">Hero background · two builds</p>
+    <h2>One loop, two position functions</h2>
+    <p>
+      Both references run the same machine: a field of cards larger than the viewport, moved by a
+      <strong>damped</strong> pointer value, with each card assigned a <strong>depth</strong>.
+      What separates them is only where the cards are placed. Everything here is CSS 3D transforms
+      and one <span style="font-family:var(--mono);font-size:0.92em">requestAnimationFrame</span> loop — no WebGL, no libraries.
+    </p>
+
+    <div class="steps">
+      <div class="step">
+        <h3>Track</h3>
+        <p>Pointer position becomes an offset from centre, normalised to roughly −0.5 → 0.5 on each axis.</p>
+      </div>
+      <div class="step">
+        <h3>Damp</h3>
+        <p>Each frame eases toward that target instead of snapping to it. This is the whole reason the motion feels expensive — drag the Ease slider to 20 and it turns cheap immediately.</p>
+      </div>
+      <div class="step">
+        <h3>Distribute</h3>
+        <p>Multiply the eased offset by each card's depth. Different speeds read as different distances, and the parallax does the rest.</p>
+      </div>
+    </div>
+
+    <pre><span class="c">// scatter — depth scales a flat translation</span>
+card.style.transform =
+  <span class="s">`translate3d(${bx - x * 260 * d}px, ${by - y * 170 * d}px, 0)
+   rotate(${rot}deg) rotateY(${-x * 13 * d}deg) rotateX(${y * 9 * d}deg)`</span>;
+
+<span class="c">// cylinder — depth falls out of the geometry</span>
+<span class="k">const</span> theta = i / N * Math.PI * 2 + rotation;   <span class="c">// rotation follows the pointer</span>
+<span class="k">const</span> depth = Math.cos(theta);                   <span class="c">// +1 front, −1 back</span>
+
+card.style.transform =
+  <span class="s">`rotateX(${tilt}deg) rotateY(${theta}rad) translateZ(${R}px)
+   rotateY(${-theta * 0.82}rad) translateY(${yOff}px)`</span>;
+
+face.style.opacity = 0.22 + 0.78 * (depth + 1) / 2;
+face.style.filter  = <span class="s">`blur(${quantise((1 - (depth + 1) / 2) * 5)}px)`</span>;</pre>
+
+    <p>
+      The cylinder needs <span style="font-family:var(--mono);font-size:0.92em">transform-style: preserve-3d</span> on the stage,
+      which buys you something important for free: the headline sits inside that same 3D space at z&nbsp;=&nbsp;0, so the browser
+      sorts cards in front of and behind it by real geometry. No z-index bookkeeping. In scatter mode the stage is flat,
+      so front and back cards are split with z-index around the headline's layer instead.
+    </p>
+
+    <p class="foot">
+      Blur is quantised to whole pixels and lives on an inner element, never on the transformed card — animating a filter
+      per-frame on a 3D-positioned node is what turns a smooth hero into a slideshow. Reduced-motion visitors get the same
+      composition, held still.
+    </p>
+  </div>
+</section>
+
+<script>
+(function () {
+  var stage = document.getElementById('stage');
+  var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  var DATA = [
+    { n: 'Neon Drift',   g: 'Racer',       x: -720, y: -320, w: 360, h: 250, d: 0.55, r: -3.5, h_: 268 },
+    { n: 'Tower Pop',    g: 'Puzzle',      x: -350, y: -268, w: 244, h: 236, d: 0.95, r:  2.5, h_: 192 },
+    { n: 'Sky Harvest',  g: 'Sim',         x:  205, y: -318, w: 430, h: 296, d: 0.70, r: -1.5, h_: 210 },
+    { n: 'Blockbound',   g: 'Platformer',  x:  790, y: -186, w: 330, h: 240, d: 1.20, r:  4.0, h_: 322 },
+    { n: 'Ghost Mail',   g: 'Narrative',   x: -566, y:  212, w: 372, h: 300, d: 1.10, r: -2.0, h_: 286 },
+    { n: 'Pixel Reef',   g: 'Sandbox',     x:  -40, y:  412, w: 350, h: 250, d: 0.85, r:  1.5, h_: 158 },
+    { n: 'Loop Runner',  g: 'Endless',     x:  612, y:  196, w: 360, h: 244, d: 0.60, r: -4.0, h_: 232 },
+    { n: 'Cat Café',     g: 'Idle',        x: -888, y:  118, w: 262, h: 190, d: 1.30, r:  3.0, h_: 336 },
+    { n: 'Rift Tactics', g: 'Strategy',    x:  952, y:  330, w: 300, h: 210, d: 0.45, r: -2.5, h_: 246 },
+    { n: 'Bloom',        g: 'Puzzle',      x: -132, y: -486, w: 224, h: 162, d: 1.35, r:  5.0, h_: 300 },
+    { n: 'Static Field', g: 'Shooter',     x:  436, y:  474, w: 262, h: 182, d: 1.25, r: -5.5, h_: 204 },
+    { n: 'Paper Town',   g: 'Builder',     x: -824, y:  -58, w: 206, h: 152, d: 0.35, r:  2.0, h_: 176 }
+  ];
+
+  var N = DATA.length;
+  var cards = [];
+
+  DATA.forEach(function (d, i) {
+    var el = document.createElement('article');
+    el.className = 'card';
+    el.setAttribute('aria-hidden', 'true');
+    el.style.setProperty('--h', d.h_);
+
+    var face = document.createElement('div');
+    face.className = 'face';
+    face.innerHTML = '<div class="tag"><b>' + d.n + '</b><span>' + d.g + '</span></div>';
+    el.appendChild(face);
+    stage.appendChild(el);
+
+    cards.push({
+      el: el,
+      face: face,
+      data: d,
+      theta0: (i / N) * Math.PI * 2,
+      yOff: ((i % 4) - 1.5) * 118 + (i % 3) * 26,
+      lastBlur: -1,
+      lastZ: -1
+    });
+  });
+
+  // ---- state ----
+  var mode = 'scatter';
+  var spread = 0.52;
+  var ease = 0.06;
+  var scale = 1;
+
+  var x = 0, y = 0, tx = 0, ty = 0;   // damped pointer + target
+  var rot = 0, spin = 0;              // cylinder rotation
+  var W = 0, H = 0;
+
+  function layout() {
+    W = stage.clientWidth;
+    H = stage.clientHeight;
+    scale = Math.max(0.38, Math.min(0.92, W / 1980));
+    cards.forEach(function (c) {
+      var w = c.data.w * scale, h = c.data.h * scale;
+      c.el.style.width = w + 'px';
+      c.el.style.height = h + 'px';
+      c.el.style.marginLeft = (-w / 2) + 'px';
+      c.el.style.marginTop = (-h / 2) + 'px';
+      c.el.querySelector('.face').style.borderRadius = Math.max(12, 22 * scale) + 'px';
+    });
+  }
+
+  addEventListener('resize', layout);
+  layout();
+
+  addEventListener('pointermove', function (e) {
+    tx = e.clientX / innerWidth - 0.5;
+    ty = e.clientY / innerHeight - 0.5;
+  }, { passive: true });
+
+  function quant(v, step) { return Math.round(v / step) * step; }
+
+  function render() {
+    var i, c, t;
+
+    if (mode === 'scatter') {
+      var rangeX = 300 * spread * 2 * scale;
+      var rangeY = 190 * spread * 2 * scale;
+
+      for (i = 0; i < N; i++) {
+        c = cards[i];
+        var d = c.data.d;
+        var px = c.data.x * scale - x * rangeX * d;
+        var py = c.data.y * scale - y * rangeY * d;
+
+        c.el.style.transform =
+          'translate3d(' + px.toFixed(2) + 'px,' + py.toFixed(2) + 'px,0)' +
+          ' rotate(' + c.data.r + 'deg)' +
+          ' rotateY(' + (-x * 14 * d).toFixed(2) + 'deg)' +
+          ' rotateX(' + (y * 10 * d).toFixed(2) + 'deg)';
+
+        // flat stage → split front/back around the headline (z-index 50)
+        var z = d > 0.9 ? 80 : 10;
+        if (z !== c.lastZ) { c.el.style.zIndex = z; c.lastZ = z; }
+
+        var b = quant((1 - Math.min(1, d / 1.35)) * 2, 1);
+        if (b !== c.lastBlur) {
+          c.face.style.filter = b ? 'blur(' + b + 'px)' : 'none';
+          c.face.style.opacity = (0.86 + 0.14 * Math.min(1, d / 1.35)).toFixed(2);
+          c.lastBlur = b;
+        }
+      }
+    } else {
+      var R = (520 + 380 * spread) * scale;
+      var tilt = -y * 12;
+
+      for (i = 0; i < N; i++) {
+        c = cards[i];
+        var th = c.theta0 + rot;
+        var depth = Math.cos(th);             // +1 nearest, -1 furthest
+        t = (depth + 1) / 2;
+
+        c.el.style.transform =
+          'rotateX(' + tilt.toFixed(2) + 'deg)' +
+          ' rotateY(' + th.toFixed(4) + 'rad)' +
+          ' translateZ(' + R.toFixed(1) + 'px)' +
+          ' rotateY(' + (-th * 0.82).toFixed(4) + 'rad)' +
+          ' translateY(' + (c.yOff * scale).toFixed(1) + 'px)';
+
+        var bl = quant((1 - t) * 5, 1);
+        if (bl !== c.lastBlur) {
+          c.face.style.filter = bl ? 'blur(' + bl + 'px)' : 'none';
+          c.lastBlur = bl;
+        }
+        c.face.style.opacity = (0.22 + 0.78 * t).toFixed(2);
+      }
+    }
+  }
+
+  function frame() {
+    x += (tx - x) * ease;
+    y += (ty - y) * ease;
+
+    if (mode === 'cylinder') {
+      spin += 0.0013;                       // slow ambient drift
+      var target = spin + x * 1.15;
+      rot += (target - rot) * Math.min(1, ease * 1.6);
+    }
+
+    render();
+    requestAnimationFrame(frame);
+  }
+
+  if (reduce) {
+    tx = ty = 0;
+    render();
+  } else {
+    frame();
+  }
+
+  // ---- controls ----
+  var bScatter = document.getElementById('mScatter');
+  var bCyl = document.getElementById('mCyl');
+
+  function setMode(m) {
+    mode = m;
+    stage.classList.toggle('is-cyl', m === 'cylinder');
+    stage.classList.toggle('is-scatter', m === 'scatter');
+    bScatter.setAttribute('aria-pressed', String(m === 'scatter'));
+    bCyl.setAttribute('aria-pressed', String(m === 'cylinder'));
+    cards.forEach(function (c) { c.lastBlur = -1; c.lastZ = -1; });
+    if (m === 'scatter') {
+      cards.forEach(function (c) { c.face.style.opacity = ''; });
+    }
+    if (reduce) render();
+  }
+
+  bScatter.addEventListener('click', function () { setMode('scatter'); });
+  bCyl.addEventListener('click', function () { setMode('cylinder'); });
+
+  document.getElementById('spread').addEventListener('input', function (e) {
+    spread = e.target.value / 100;
+    if (reduce) render();
+  });
+  document.getElementById('ease').addEventListener('input', function (e) {
+    ease = e.target.value / 100;
+  });
+  document.getElementById('art').addEventListener('change', function (e) {
+    stage.classList.toggle('show-art', e.target.checked);
+  });
+})();
+</script>
+</body>
+</html>
