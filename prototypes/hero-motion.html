@@ -273,13 +273,18 @@
     color: #000;
     text-wrap: balance;
   }
-  .copy p {
+  /* Sits below the headline on its own, not inside it. The headline turns
+     far too hard for reading copy to ride along — it ends up edge-on. This
+     takes a fraction of the same turn so it still belongs to the space. */
+  .sub {
     position: absolute;
-    top: calc(100% + clamp(16px, 2.1vw, 42px));
     left: 50%;
+    top: 50%;
+    margin: clamp(74px, 8.6vw, 178px) 0 0;
     transform: translateX(-50%);
-    margin: 0;
     width: min(23em, 78vw);
+    text-align: center;
+    pointer-events: none;
     font-family: var(--ui);
     font-size: clamp(14px, 1.1vw, 22px);
     font-weight: 400;
@@ -305,23 +310,6 @@
       rgba(255,255,255,0.78) 66%,
       rgba(255,255,255,0.97) 88%,
       #ffffff 100%);
-  }
-
-  /* ---------- CURSOR FIELD ---------- */
-
-  .field {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 260px;
-    height: 260px;
-    margin: -130px 0 0 -130px;
-    border-radius: 50%;
-    z-index: 300;
-    pointer-events: none;
-    opacity: 0;
-    background: radial-gradient(circle, rgba(255,255,255,0.9) 0 2.6%, rgba(255,255,255,0.13) 3.4% 38%, transparent 62%);
-    will-change: transform, opacity;
   }
 
   /* ---------- CONTROL PANEL ---------- */
@@ -467,13 +455,12 @@
   <div class="stage" id="stage">
     <div class="copy">
       <h1>Build games<br>with no code</h1>
-      <p>Describe a game. LAB writes the code, models the characters and builds the world.</p>
     </div>
+
+    <p class="sub">Describe a game. LAB writes the code, models the characters and builds the world.</p>
   </div>
 
   <div class="veil" aria-hidden="true"></div>
-
-  <div class="field" id="field" aria-hidden="true"></div>
 
   <div class="panel">
     <div class="seg" role="group" aria-label="Background motion mode">
@@ -630,12 +617,26 @@ card.style.transform =
 (function () {
   // bump this when the file changes — the console tells you at a glance
   // whether the copy you're looking at is the current one
-  console.log('%cLAB hero', 'font-weight:bold', 'build 8 — your images');
+  console.log('%cLAB hero', 'font-weight:bold', 'build 9 — stronger globe curvature');
 
   var stage = document.getElementById('stage');
-  var field = document.getElementById('field');
   var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  var PERSP = 1200;
+  var PLANE_PERSP = 1200;
+
+  // Perspective is the curvature dial for the globe. Screen position is
+  // PERSP*tan(az) and az is atan(uPx/PERSP), so the two cancel — a shorter
+  // perspective leaves every tile exactly where it was and only makes it
+  // turn harder. That's the whole isometric-globe feel in one number.
+  var persp = PLANE_PERSP;
+  var lastPersp = 0;
+
+  function setPerspective(p) {
+    persp = p;
+    var q = Math.round(p);
+    if (q === lastPersp) return;
+    lastPersp = q;
+    stage.style.perspective = q + 'px';
+  }
 
   var RAD = Math.PI / 180;
 
@@ -883,11 +884,14 @@ card.style.transform =
   hero.addEventListener('pointercancel', endDrag);
 
   var copyEl = document.querySelector('.copy');
+  var subEl = document.querySelector('.sub');
 
   // how far apart the composition sits, over and above the Spread control
   var SPACING = 1.18;
 
   function quant(v, step) { return Math.round(v / step) * step; }
+
+  function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
 
   // fold a value back into one lattice period, centred on zero
   function wrapAngle(v, span) { return v - span * Math.round(v / span); }
@@ -907,6 +911,7 @@ card.style.transform =
     var amp = strength * present;
 
     if (mode === 'scatter') {
+      setPerspective(PLANE_PERSP);
       var rangeX = 300 * spread * 2 * scale;
       var rangeY = 190 * spread * 2 * scale;
 
@@ -923,8 +928,8 @@ card.style.transform =
       // whole plane back so that side clears the headline instead of
       // cropping it. Cards far out at the edges still come forward.
       var planeZ = -70 * scale;
-      textRotY = -ay * 0.85;
-      textRotX = ax * 0.85;
+      textRotY = -ay * 2.0;
+      textRotX = ax * 2.0;
       var planeSpin = ' rotateY(' + ay.toFixed(4) + 'rad) rotateX(' + ax.toFixed(4) + 'rad)';
 
       for (i = 0; i < N; i++) {
@@ -944,7 +949,7 @@ card.style.transform =
         var wz = -u * sinY + v * sinX * cosY + off + planeZ;
 
         // where it lands on screen, so the cursor can find it
-        var proj = PERSP / (PERSP - wz);
+        var proj = persp / (persp - wz);
         var sy = originY + wy * proj;
         var dx = cx - (originX + wx * proj);
         var dy = cy - sy;
@@ -973,21 +978,25 @@ card.style.transform =
       // point, so it can only ever skew everything the same way.
       //
       // Putting the sphere's centre AT the camera is the whole trick. CSS sits
-      // its camera at z = PERSP, so the cards are placed with
-      //   translateZ(PERSP) rotateY(-az) rotateX(el) translateZ(-R)
+      // its camera at z = persp, so the cards are placed with
+      //   translateZ(persp) rotateY(-az) rotateX(el) translateZ(-R)
       // which lands each one at camera + R * direction, already facing home.
-      // Screen position then works out to PERSP * tan(az) — it depends only on
+      // Screen position then works out to persp * tan(az) — it depends only on
       // the angle, so R is free to control apparent size alone.
       // Radius controls apparent size AND what clears the headline: a card's
-      // final depth is PERSP - R*cos(az)*cos(el), so too small an R floats the
+      // final depth is persp - R*cos(az)*cos(el), so too small an R floats the
       // mid-range cards in front of z = 0 and they crop the type. At 1420 only
       // the far edges of the sphere come forward.
-      var R = 1420;
+      // Tilt is the curvature dial here. A shorter perspective turns every
+      // tile harder without moving any of them, which is exactly the
+      // isometric-globe read. R tracks it so the tiles keep their size.
+      setPerspective(PLANE_PERSP / (0.62 + tiltAmt * 0.98));
+      var R = persp * 1.18;
       var openness = 0.55 + spread * 0.95;
 
       // The lattice is laid out in SCREEN space, not in angle. Stepping by a
       // fixed angle looks even in theory but lands unevenly on screen —
-      // position is PERSP*tan(az), so inner cells bunch up while the outer
+      // position is persp*tan(az), so inner cells bunch up while the outer
       // ones shoot past the edge. Spacing in pixels and deriving the angle
       // back out gives an even field AND a true globe orientation, since az
       // still grows toward the edges.
@@ -1000,10 +1009,11 @@ card.style.transform =
       // which is what lets the lattice repeat forever
       var offU = -x * 250 - panX;
       var offV = y * 150 - panY;
-      // the field's pixel offset expressed back as an angle, so the headline
-      // turns by the same amount the globe does
-      textRotY = -Math.atan(offU / PERSP) * 2.2;
-      textRotX = Math.atan(offV / PERSP) * 2.2;
+      // The headline turns with the globe, heavily over-driven so the type
+      // reads as a 3D object rather than a flat layer that happens to move.
+      // Clamped, or a long drag folds it edge-on and it disappears.
+      textRotY = clamp(-Math.atan(offU / persp) * 3.8, -0.55, 0.55);
+      textRotX = clamp(Math.atan(offV / persp) * 3.4, -0.42, 0.42);
 
       for (i = 0; i < N; i++) {
         c = cards[i];
@@ -1014,13 +1024,13 @@ card.style.transform =
         // tile is ever seen to jump.
         var uPx = wrapAngle(c.data.cu * cellU + offU, spanU);
         var vPx = wrapAngle(c.data.cv * cellV + offV, spanV);
-        var az = Math.atan(uPx / PERSP);
-        var el = Math.atan(vPx * Math.cos(az) / PERSP);
+        var az = Math.atan(uPx / persp);
+        var el = Math.atan(vPx * Math.cos(az) / persp);
 
         var cosA = Math.cos(az), cosE = Math.cos(el);
-        var proj = PERSP / (R * cosA * cosE);
-        var sx = originX + PERSP * Math.tan(az);
-        var sy = originY + PERSP * Math.tan(el) / cosA;
+        var proj = persp / (R * cosA * cosE);
+        var sx = originX + persp * Math.tan(az);
+        var sy = originY + persp * Math.tan(el) / cosA;
 
         var ddx = cx - sx;
         var ddy = cy - sy;
@@ -1032,7 +1042,7 @@ card.style.transform =
         lift = f * 130 * amp;
 
         c.el.style.transform =
-          'translateZ(' + PERSP + 'px)' +
+          'translateZ(' + persp + 'px)' +
           ' rotateY(' + (-az).toFixed(4) + 'rad)' +
           ' rotateX(' + el.toFixed(4) + 'rad)' +
           ' translateZ(' + (-R) + 'px)' +
@@ -1051,10 +1061,11 @@ card.style.transform =
       ' rotateY(' + textRotY.toFixed(4) + 'rad)' +
       ' rotateX(' + textRotX.toFixed(4) + 'rad)';
 
-    field.style.transform =
-      'translate3d(' + cx.toFixed(1) + 'px,' + cy.toFixed(1) + 'px,0) scale(' +
-      (0.6 + 0.4 * present).toFixed(3) + ')';
-    field.style.opacity = (present * 0.55).toFixed(3);
+    subEl.style.transform =
+      'translateX(-50%)' +
+      ' rotateY(' + (textRotY * 0.28).toFixed(4) + 'rad)' +
+      ' rotateX(' + (textRotX * 0.28).toFixed(4) + 'rad)';
+
   }
 
   // cards sit flat by default; a shadow only grows as one lifts toward the
