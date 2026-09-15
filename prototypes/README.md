@@ -67,22 +67,39 @@ and quiet — more than about six decoding at once will cost you framerate on
 a laptop. Add `poster: 'images/still.jpg'` alongside `src` for the first
 frame.
 
-## Change the font
+## Fonts
 
-Two edits, both at the very top of the file.
+The headline is **Greed Narrow Bold** (Displaay Type Foundry), self-hosted
+from `fonts/`. Nav and buttons are Archivo, captions are JetBrains Mono,
+both from Google Fonts.
 
-1. The Google Fonts `<link>` — swap the families in the URL.
-2. The `--display` and `--ui` tokens in `:root` — match the names, and keep
-   a real fallback stack after each one so the page doesn't reflow when the
-   webfont is slow.
+> The file here is the **trial** cut. Trial licences generally cover
+> comps and internal testing, not a public site — check the terms and drop
+> in a licensed copy before this goes live. The filename says `TRIAL` on
+> purpose; when you swap it, the only things to update are the two `src`
+> lines and the filenames.
+
+The `.ttf` you supplied was converted to `.woff2` (235KB → 72KB) and both
+are listed in the `@font-face`, woff2 first. Every browser you care about
+takes the woff2; the ttf is there as a floor.
+
+To swap the display face, edit two places at the top of the file:
+
+1. The `src` lines inside `@font-face` (or the Google Fonts `<link>` if
+   you're switching to a hosted face).
+2. The `--display` token in `:root`.
 
 ```css
---display: "Your Display Face", "Helvetica Neue", Arial, sans-serif;
+--display: "Your Display Face", "Arial Narrow", Helvetica, sans-serif;
 --ui:      "Your Text Face", "Helvetica Neue", Arial, sans-serif;
 ```
 
-Nothing else references a font name, so those two lines change the whole
-page.
+Keep a real fallback after each — a condensed face wants a condensed
+fallback, or the layout jumps while the webfont loads.
+
+If you change to a wider or narrower face, retune `.copy h1`: a narrow face
+needs a larger `font-size` and much less negative `letter-spacing` than a
+wide one. The current values are set for Greed Narrow.
 
 ## Tuning the motion
 

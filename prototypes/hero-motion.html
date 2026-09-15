@@ -5,20 +5,33 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Card Drift</title>
 
-<!-- ============================================================
-     FONTS — step 1 of 2. Swap the families in this URL.
-     Then update --display / --ui below to match. That's the whole job.
-     ============================================================ -->
+<!-- Text faces. The display face is self-hosted below. -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
 
 <style>
+  /* ============================================================
+     DISPLAY FACE — Greed Narrow Bold, self-hosted.
+     Swapping it is one src line plus the --display token below.
+     ============================================================ */
+  @font-face {
+    font-family: "Greed Narrow";
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+    /* FONT-SRC-START */
+    src: url("fonts/GreedNarrow-TRIAL-Bold.woff2") format("woff2"),
+         url("fonts/GreedNarrow-TRIAL-Bold.ttf") format("truetype");
+    /* FONT-SRC-END */
+  }
+
   :root {
-    /* FONTS — step 2 of 2. Always keep a real fallback after the custom face,
-       or the page silently reflows when the webfont is slow. */
-    --display: "Archivo Black", "Helvetica Neue", Arial, sans-serif;  /* headline */
-    --ui:      "Archivo", "Helvetica Neue", Arial, sans-serif;        /* nav, buttons */
+    /* Keep a real fallback after each face or the page reflows when the
+       webfont is slow. Arial Narrow is the closest widely-installed
+       stand-in for a condensed display face. */
+    --display: "Greed Narrow", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;  /* headline */
+    --ui:      "Archivo", "Helvetica Neue", Arial, sans-serif;                       /* nav, buttons */
     --mono:    "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
 
     --ink:      #05070d;
@@ -239,9 +252,11 @@
   .copy h1 {
     margin: 0;
     font-family: var(--display);
-    font-size: clamp(2.6rem, 8.4vw, 7rem);
-    line-height: 0.88;
-    letter-spacing: -0.035em;
+    /* a narrow face needs more size and far less negative tracking than
+       the wide grotesque this replaced */
+    font-size: clamp(3.1rem, 10.6vw, 8.8rem);
+    line-height: 0.86;
+    letter-spacing: -0.012em;
     color: #000;
     text-wrap: balance;
   }
