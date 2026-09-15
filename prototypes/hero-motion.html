@@ -470,6 +470,7 @@
     <div class="seg" role="group" aria-label="Background motion mode">
       <button type="button" id="mScatter" aria-pressed="false">Plane</button>
       <button type="button" id="mGlobe" aria-pressed="true">Globe</button>
+      <button type="button" id="mChurch" aria-pressed="false">Church</button>
     </div>
 
     <div class="knob">
@@ -580,6 +581,18 @@ card.style.transform =
 <span class="c">// control apparent size and nothing else.</span></pre>
 
     <p>
+      <strong>Church</strong> is the same sphere with the roles reversed: the tiles are fixed to its wall and the
+      <em>camera</em> turns. In Globe the field slides across the screen and each tile's angle is read back from
+      where it landed, which keeps the composition tidy but means a half-screen mouse move rotates the view by
+      only about nine degrees. Here the same move turns your head twenty-five, so a tile visibly swings from
+      face-on to oblique as it crosses the frame — which is the thing that makes it feel like a room you are
+      standing in rather than a pattern in front of you. A wider lens, a shared radius, a few degrees of roll per
+      tile, and a slow idle wander finish it. The wall repeats every 180°, so a full drag round never finds it
+      empty. <span class="m">Tilt</span> is the lens width here; <span class="m">Spread</span> is how far apart
+      the tiles are pinned.
+    </p>
+
+    <p>
       Because screen position falls out of the angle and size falls out of the radius, the two are independent:
       <span class="m">Spread</span> opens the globe wider without changing how big the cards read, and every
       card's stored <span class="m">x, y</span> is simply reinterpreted as an angle around the viewer. A card
@@ -623,7 +636,7 @@ card.style.transform =
 (function () {
   // bump this when the file changes — the console tells you at a glance
   // whether the copy you're looking at is the current one
-  console.log('%cLAB hero', 'font-weight:bold', 'build 17 — controls hidden (press D to show)');
+  console.log('%cLAB hero', 'font-weight:bold', 'build 18 — Church mode');
 
   var stage = document.getElementById('stage');
   var headEl = document.querySelector('.copy h1');
@@ -778,7 +791,10 @@ card.style.transform =
       shB: 58 - 44 * t,
       shA: 0.34 - 0.24 * t,
       lastBlur: -1,
-      lastShadow: -1
+      lastShadow: -1,
+      lastVis: true,
+      // a few degrees of roll, so the wall reads as pinned-up rather than typeset
+      roll: (((i * 7) % 5) - 2) * 1.6
     });
   });
 
@@ -798,6 +814,7 @@ card.style.transform =
   var x = 0, y = 0, tx = 0, ty = 0;        // damped pointer, normalised -0.5..0.5
   var cx = 0, cy = 0, tcx = 0, tcy = 0;    // damped cursor, in stage pixels
   var present = 0, tPresent = 0;           // 0 when the pointer is away
+  var driftYaw = 0, driftPitch = 0;        // Church mode's slow wander
 
   // drag-to-pan: the whole plane slides under the cursor, then coasts
   var panX = 0, panY = 0, panTX = 0, panTY = 0;
@@ -857,6 +874,12 @@ card.style.transform =
     // Globe spins freely — clamping it would stop the lattice before it
     // could wrap, which is the whole point of the repeat.
     if (mode === 'globe') return;
+    if (mode === 'church') {
+      // yaw spins forever; pitch stops at the ceiling and floor, so a long
+      // vertical drag doesn't wind up slack you then have to unwind
+      panTY = Math.max(-H * 0.42, Math.min(H * 0.42, panTY));
+      return;
+    }
     maxPan = Math.min(W, H) * 0.42;
     panTX = Math.max(-maxPan, Math.min(maxPan, panTX));
     panTY = Math.max(-maxPan, Math.min(maxPan, panTY));
@@ -987,7 +1010,7 @@ card.style.transform =
         if (c.lastBlur !== 0) { c.face.style.filter = 'none'; c.lastBlur = 0; }
         shade(c, f);
       }
-    } else {
+    } else if (mode === 'globe') {
       // GLOBE — every card sits on the inside of a sphere whose centre is the
       // camera itself, each one turned to face that centre. That is what makes
       // the distortion mirror around the middle: cards left of centre angle one
@@ -1072,11 +1095,76 @@ card.style.transform =
         if (c.lastBlur !== 0) { c.face.style.filter = 'none'; c.lastBlur = 0; }
         shade(c, f);
       }
+    } else {
+      // CHURCH — you are inside the sphere and the cards are fixed to its wall.
+      // The difference from Globe is what moves: there, the field slides and
+      // the angle is read back off the screen; here the CAMERA turns and the
+      // wall stays put, so a card visibly swings from face-on to oblique as it
+      // crosses the view. Add a wide lens, one shared radius, a little idle
+      // drift, and a wall that repeats every 180° so a full spin never finds
+      // it empty — and it reads as a room you're standing in.
+      setPerspective(W * Math.max(0.26, 0.62 - 0.20 * tiltAmt));
+      var R = persp * 2.2;
+
+      // camera: pointer looks around, drag turns without limit, and the whole
+      // thing wanders a little on its own so it never quite holds still
+      var camYaw = -x * 0.42 - panX * (1.7 / Math.max(320, W)) + driftYaw;
+      var camPitch = clampTo(y * 0.26 - panY * (1.3 / Math.max(320, H)) + driftPitch, 0.55);
+      var cp = Math.cos(camPitch), sp = Math.sin(camPitch);
+
+      // Spread widens the wall's cells
+      var azCell = 30 * RAD * (0.8 + spread * 0.4);
+      var elCell = 44 * RAD * (0.8 + spread * 0.4);
+
+      for (i = 0; i < N; i++) {
+        c = cards[i];
+        var el0 = c.data.cv * elCell;
+        var a = wrapAngle(c.data.cu * azCell + camYaw, Math.PI);   // two copies round the sphere
+
+        // where the card points after the camera turns; forward is -z
+        var ce = Math.cos(el0), se = Math.sin(el0);
+        var dx = ce * Math.sin(a), dy = se, dz = -ce * Math.cos(a);
+        var dy2 = dy * cp + dz * sp;
+        var fwd = dy * sp - dz * cp;
+
+        // behind the camera's shoulder — CSS perspective goes pathological
+        // past the camera plane, so cull rather than let it try
+        var vis = fwd > 0.18;
+        if (vis !== c.lastVis) { c.el.style.visibility = vis ? '' : 'hidden'; c.lastVis = vis; }
+        if (!vis) continue;
+
+        var proj = persp / (R * fwd);
+        var sx = originX + persp * dx / fwd;
+        var sy = originY + persp * dy2 / fwd;
+
+        var ddx = cx - sx;
+        var ddy = cy - sy;
+        f = amp ? influence(ddx, ddy, reach) : 0;
+        pullX = ddx * f * 0.3 * amp / proj;
+        pullY = ddy * f * 0.3 * amp / proj;
+        lift = f * 130 * amp;
+
+        c.el.style.transform =
+          'translateZ(' + persp + 'px)' +
+          ' rotateX(' + (-camPitch).toFixed(4) + 'rad)' +
+          ' rotateY(' + (-a).toFixed(4) + 'rad)' +
+          ' rotateX(' + el0.toFixed(4) + 'rad)' +
+          ' translateZ(' + (-R) + 'px)' +
+          ' rotate(' + c.roll + 'deg)' +
+          ' translate3d(' + pullX.toFixed(2) + 'px,' + pullY.toFixed(2) + 'px,' +
+          lift.toFixed(2) + 'px)';
+
+        if (c.lastBlur !== 0) { c.face.style.filter = 'none'; c.lastBlur = 0; }
+        shade(c, f);
+      }
+
+      // the headline turns with the room, a touch ahead of it
+      headY = clampTo(-camYaw * 1.6, 0.50);
+      headX = clampTo(camPitch * 1.4, 0.38);
     }
 
     headEl.style.transform =
       'rotateY(' + headY.toFixed(4) + 'rad) rotateX(' + headX.toFixed(4) + 'rad)';
-
   }
 
   // cards sit flat by default; a shadow only grows as one lifts toward the
@@ -1093,6 +1181,11 @@ card.style.transform =
   }
 
   function frame() {
+    if (mode === 'church' && !reduce) {
+      var t = performance.now() * 0.001;
+      driftYaw = 0.05 * Math.sin(t * 0.21) + 0.025 * Math.sin(t * 0.57);
+      driftPitch = 0.03 * Math.sin(t * 0.29);
+    }
     x += (tx - x) * ease;
     y += (ty - y) * ease;
 
@@ -1133,15 +1226,19 @@ card.style.transform =
   // ---- controls ----
   var bScatter = document.getElementById('mScatter');
   var bGlobe = document.getElementById('mGlobe');
+  var bChurch = document.getElementById('mChurch');
 
   function setMode(m) {
     mode = m;
     stage.classList.toggle('is-scatter', m === 'scatter');
     bScatter.setAttribute('aria-pressed', String(m === 'scatter'));
     bGlobe.setAttribute('aria-pressed', String(m === 'globe'));
+    bChurch.setAttribute('aria-pressed', String(m === 'church'));
     cards.forEach(function (c) {
       c.lastBlur = -1;
       c.lastShadow = -1;
+      // only Church culls; make sure nothing stays hidden on the way out
+      if (!c.lastVis) { c.el.style.visibility = ''; c.lastVis = true; }
       if (m === 'scatter') c.face.style.opacity = '';
     });
     if (reduce) render();
@@ -1149,6 +1246,7 @@ card.style.transform =
 
   bScatter.addEventListener('click', function () { setMode('scatter'); });
   bGlobe.addEventListener('click', function () { setMode('globe'); });
+  bChurch.addEventListener('click', function () { setMode('church'); });
 
   function bind(id, fn) {
     document.getElementById(id).addEventListener('input', function (e) {
