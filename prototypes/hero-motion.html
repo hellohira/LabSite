@@ -630,7 +630,7 @@ card.style.transform =
 (function () {
   // bump this when the file changes — the console tells you at a glance
   // whether the copy you're looking at is the current one
-  console.log('%cLAB hero', 'font-weight:bold', 'build 7 — repeating image lattice');
+  console.log('%cLAB hero', 'font-weight:bold', 'build 8 — your images');
 
   var stage = document.getElementById('stage');
   var field = document.getElementById('field');
@@ -661,7 +661,7 @@ card.style.transform =
      ============================================================ */
   var IMAGE_DIR = 'images/';
   var IMAGE_EXTS = ['.jpg', '.jpeg', '.png', '.webp', '.avif'];
-  var IMAGES = ['01', '02', '03', '04', '05', '06', '07', '08'];
+  var IMAGES = ['1', '2', '3', '4', '5', '6', '7', '8'];
 
   var COLS = 4, ROWS = 3;
 
@@ -669,24 +669,27 @@ card.style.transform =
   // wraps round, in screen pixels from centre. It has to clear the edge by
   // at least half a tile so the wrap is never seen (0.5 + ~0.11), and every
   // extra bit above that thins the field out. These are near the floor.
-  var LATTICE_W = 0.63, LATTICE_H = 0.70;
+  var LATTICE_W = 0.63, LATTICE_H = 0.62;
 
   var SLOTS = [
-    { img: 0, w: 430, h: 268, jx: -0.10, jy:  0.08 },
-    { img: 1, w: 300, h: 340, jx:  0.08, jy: -0.10 },
-    { img: 2, w: 396, h: 250, jx: -0.05, jy:  0.12 },
-    { img: 3, w: 330, h: 326, jx:  0.11, jy:  0.03 },
+    { img: 0, w: 430, h: 254, jx: -0.13, jy:  0.24 },
+    { img: 1, w: 340, h: 214, jx:  0.10, jy: -0.28 },
+    { img: 2, w: 396, h: 224, jx: -0.06, jy:  0.30 },
+    { img: 3, w: 358, h: 212, jx:  0.14, jy: -0.18 },
 
-    { img: 4, w: 364, h: 240, jx: -0.09, jy: -0.07 },
-    { img: 5, w: 300, h: 356, jx:  0.09, jy:  0.09 },
-    { img: 6, w: 420, h: 258, jx:  0.03, jy: -0.12 },
-    { img: 7, w: 322, h: 318, jx: -0.11, jy:  0.05 },
+    { img: 4, w: 312, h: 198, jx: -0.12, jy: -0.26 },
+    { img: 5, w: 420, h: 236, jx:  0.11, jy:  0.22 },
+    { img: 6, w: 372, h: 220, jx:  0.04, jy:  0.28 },
+    { img: 7, w: 330, h: 204, jx: -0.14, jy: -0.22 },
 
-    // the four repeats — different crops so the reuse doesn't announce itself
-    { img: 2, w: 350, h: 250, jx:  0.06, jy: -0.05 },
-    { img: 5, w: 388, h: 280, jx: -0.07, jy:  0.10 },
-    { img: 0, w: 310, h: 300, jx:  0.11, jy: -0.09 },
-    { img: 7, w: 372, h: 242, jx: -0.03, jy:  0.07 }
+    // The four repeats. Each sits two columns from its twin — the maximum
+    // separation on a 4-wide lattice — because the grid wraps, which makes
+    // the top and bottom rows neighbours too. Landing a repeat in its
+    // twin's column stacks the same picture directly above itself.
+    { img: 2, w: 350, h: 207, jx:  0.08, jy:  0.26 },
+    { img: 3, w: 404, h: 228, jx: -0.09, jy: -0.24 },
+    { img: 0, w: 318, h: 200, jx:  0.13, jy:  0.20 },
+    { img: 1, w: 386, h: 218, jx: -0.04, jy: -0.30 }
   ];
 
   var DATA = SLOTS.map(function (s, i) {
