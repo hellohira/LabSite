@@ -462,6 +462,11 @@
     </div>
 
     <div class="knob">
+      <label for="tilt">Tilt</label>
+      <input type="range" id="tilt" min="0" max="200" value="100">
+    </div>
+
+    <div class="knob">
       <label for="pull">Pull</label>
       <input type="range" id="pull" min="0" max="100" value="58">
     </div>
@@ -491,13 +496,20 @@
 <section class="notes" id="notes">
   <div class="notes-inner">
     <p class="eyebrow">Hero background · attraction build</p>
-    <h2>Flat cards, moved through real depth</h2>
+    <h2>One tilted plane, not twenty tilted cards</h2>
     <p>
-      Every card stays <strong>face-on</strong> — no <span class="m">rotateX</span>, no
-      <span class="m">rotateY</span>, so nothing ever skews into a trapezoid. The only 3D is
-      <strong>where</strong> a card sits: each one carries a <span class="m">translateZ</span>, and the stage's
-      <span class="m">perspective</span> turns that depth into size and speed on its own.
-      Cards stay 2D objects; the space they move through is 3D.
+      Every card lies flat on a <strong>single plane</strong> that is itself rotated in 3D. They all share one
+      orientation, so the perspective distortion is <strong>consistent</strong> — parallel edges converge on the
+      same vanishing point, and the skew grows the further a card sits from the centre. Tilting each card
+      independently gives you roughly the same angles and reads as confetti; the shared plane is what makes it
+      read as a space.
+    </p>
+    <p>
+      A card's position is stored as a point <span class="m">(u, v)</span> on that plane, then rotated into
+      world space before it is drawn. The headline is not on the plane, so it stays square to the screen while
+      everything around it turns. The plane also sits slightly back from
+      <span class="m">z&nbsp;=&nbsp;0</span> — without that, the tilt swings one whole side of it toward the
+      camera and it crops the headline.
     </p>
 
     <div class="steps">
@@ -515,7 +527,16 @@
       </div>
     </div>
 
-    <pre><span class="c">// how close is the cursor, 1 at the centre → 0 at the edge of reach</span>
+    <pre><span class="c">// a point on the plane, rotated into world space</span>
+<span class="k">const</span> wx =  u * cosY + v * sinX * sinY;
+<span class="k">const</span> wy =  v * cosX;
+<span class="k">const</span> wz = -u * sinY + v * sinX * cosY + floatOff + planeZ;
+
+card.style.transform =
+  <span class="s">`translate3d(${wx}px, ${wy}px, ${wz}px)
+   rotateY(${ay}rad) rotateX(${ax}rad)`</span>;   <span class="c">// every card, same angles</span>
+
+<span class="c">// how close is the cursor, 1 at the centre → 0 at the edge of reach</span>
 <span class="k">const</span> dx = cursorX - restX, dy = cursorY - restY;
 <span class="k">let</span> f = Math.max(0, 1 - Math.hypot(dx, dy) / reach);
 f = f * f * (3 - 2 * f);                    <span class="c">// smoothstep, no hard rim</span>
@@ -558,7 +579,7 @@ card.style.transform =
 (function () {
   // bump this when the file changes — the console tells you at a glance
   // whether the copy you're looking at is the current one
-  console.log('%cLAB hero', 'font-weight:bold', 'build 3 — 19 cards, drag to pan');
+  console.log('%cLAB hero', 'font-weight:bold', 'build 4 — cards on one tilted plane');
 
   var stage = document.getElementById('stage');
   var field = document.getElementById('field');
@@ -689,6 +710,8 @@ card.style.transform =
   var reachPct = 0.55;     // influence radius
   var spread = 0.52;
   var ease = 0.06;
+  var tiltAmt = 1;            // plane tilt multiplier, 1 = nominal
+  var RAD = Math.PI / 180;
   var scale = 1;
   var ySpread = 1;
 
@@ -820,31 +843,54 @@ card.style.transform =
       var rangeX = 300 * spread * 2 * scale;
       var rangeY = 190 * spread * 2 * scale;
 
+      // The whole field lies on ONE plane tilted in 3D. Every card shares
+      // that orientation, so the perspective distortion is consistent and
+      // grows toward the edges — rather than each card tilting on its own,
+      // which reads as confetti. The headline is not on the plane, so it
+      // stays square to the screen.
+      var ax = (-6 + y * 7) * tiltAmt * RAD;
+      var ay = (8 - x * 9) * tiltAmt * RAD;
+      var sinX = Math.sin(ax), cosX = Math.cos(ax);
+      var sinY = Math.sin(ay), cosY = Math.cos(ay);
+      // the tilt swings one side of the plane toward the camera; seat the
+      // whole plane back so that side clears the headline instead of
+      // cropping it. Cards far out at the edges still come forward.
+      var planeZ = -70 * scale;
+      var planeSpin = ' rotateY(' + ay.toFixed(4) + 'rad) rotateX(' + ax.toFixed(4) + 'rad)';
+
       for (i = 0; i < N; i++) {
         c = cards[i];
         var d = c.data.d;
 
-        // resting position for this frame: base layout + parallax drift +
-        // the dragged pan. Pan is mostly uniform — the plane moves as one —
-        // with just enough depth weighting to keep it dimensional.
+        // position ON the plane (u across, v down): base layout + parallax
+        // drift + the dragged pan, so a drag slides the plane itself
         var panW = 0.7 + 0.3 * d;
-        var px = c.data.x * scale - x * rangeX * d + panX * panW;
-        var py = c.data.y * ySpread - y * rangeY * d + panY * panW;
-        var pz = (d - 0.85) * 150 * scale;
+        var u = c.data.x * scale - x * rangeX * d + panX * panW;
+        var v = c.data.y * ySpread - y * rangeY * d + panY * panW;
+        var off = (d - 0.85) * 120 * scale;   // how far it floats off the plane
 
-        // cursor attraction, measured from the resting position
-        var dx = cx - (originX + px);
-        var dy = cy - (originY + py);
+        // rotate that plane point into world space: rotateX(ax) then rotateY(ay)
+        var wx = u * cosY + v * sinX * sinY;
+        var wy = v * cosX;
+        var wz = -u * sinY + v * sinX * cosY + off + planeZ;
+
+        // where it lands on screen, so the cursor can find it
+        var proj = PERSP / (PERSP - wz);
+        var dx = cx - (originX + wx * proj);
+        var dy = cy - (originY + wy * proj);
         f = amp ? influence(dx, dy, reach) : 0;
-        pullX = dx * f * 0.3 * amp;
-        pullY = dy * f * 0.3 * amp;
+        // applied after the rotations, so the card slides ALONG the plane
+        // and lifts along the plane's normal. Divided by proj so the pull
+        // reads the same on screen at any depth.
+        pullX = dx * f * 0.3 * amp / proj;
+        pullY = dy * f * 0.3 * amp / proj;
         lift = f * 110 * amp * scale;
 
         c.el.style.transform =
-          'translate3d(' + (px + pullX).toFixed(2) + 'px,' +
-          (py + pullY).toFixed(2) + 'px,' +
-          (pz + lift).toFixed(2) + 'px)' +
-          ' rotate(' + c.data.r + 'deg)';
+          'translate3d(' + wx.toFixed(2) + 'px,' + wy.toFixed(2) + 'px,' + wz.toFixed(2) + 'px)' +
+          planeSpin +
+          ' rotate(' + c.data.r + 'deg)' +
+          ' translate3d(' + pullX.toFixed(2) + 'px,' + pullY.toFixed(2) + 'px,' + lift.toFixed(2) + 'px)';
 
         // the rough's cards are flat opaque white — depth reads through
         // size and parallax speed alone, with no blur or fade
@@ -991,6 +1037,7 @@ card.style.transform =
     });
   }
 
+  bind('tilt',   function (v) { tiltAmt = v / 100; });
   bind('pull',   function (v) { strength = v / 100; });
   bind('reach',  function (v) { reachPct = v / 100; });
   bind('spread', function (v) { spread = v / 100; });
