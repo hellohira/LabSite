@@ -233,21 +233,6 @@
     pointer-events: none;
     transform-style: preserve-3d;
   }
-  /* In flow under the headline. Only the h1 takes the tilt, so this stays
-     square and readable while the display type turns. */
-  .sub {
-    margin: clamp(16px, 2.1vw, 42px) auto 0;
-    width: min(23em, 78vw);
-    text-align: center;
-    font-family: var(--ui);
-    font-size: clamp(14px, 1.1vw, 22px);
-    font-weight: 400;
-    line-height: 1.45;
-    letter-spacing: -0.005em;
-    color: #05070d;
-    text-wrap: balance;
-  }
-
   .copy h1 {
     margin: 0;
     will-change: transform;
@@ -257,7 +242,7 @@
     font-size: clamp(2.9rem, 7.4vw, 9.5rem);
     line-height: 0.88;
     letter-spacing: -0.015em;
-    color: #000;
+    color: #fff;
     text-wrap: balance;
   }
 
@@ -460,7 +445,6 @@
   <div class="stage" id="stage">
     <div class="copy">
       <h1>Build games<br>with no code</h1>
-      <p class="sub">Describe a game. LAB writes the code, models the characters and builds the world.</p>
     </div>
   </div>
 
@@ -636,7 +620,7 @@ card.style.transform =
 (function () {
   // bump this when the file changes — the console tells you at a glance
   // whether the copy you're looking at is the current one
-  console.log('%cLAB hero', 'font-weight:bold', 'build 18 — Church mode');
+  console.log('%cLAB hero', 'font-weight:bold', 'build 19 — white headline, no body copy');
 
   var stage = document.getElementById('stage');
   var headEl = document.querySelector('.copy h1');
